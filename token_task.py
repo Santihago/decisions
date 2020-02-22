@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Token Task
+Decision-Making Token Task
  
 Author: Santiago Muñoz-Moldes
 Date started: 02-2020
@@ -29,7 +29,7 @@ import glob, os
 #------------------------------
 
 #get values from dialog
-expName='Token Task'
+expName='Decisions'
 myDlg = gui.Dlg(title=expName, pos = (860,340))
 myDlg.addField(label='participant',initial=0, tip='Participant name or code'),
 myDlg.addField(label='age',initial=0, tip='Participant age'),
