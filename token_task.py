@@ -18,6 +18,7 @@ from psychopy import monitors, gui, visual, core, data, event, logging
 import numpy as np
 from numpy.random import random, randint, normal, uniform
 from random import shuffle
+import math
 #from math import ceil, floor
 import glob, os
 
@@ -174,25 +175,25 @@ mouse = event.Mouse(visible=True, win=win)
 # VISUAL ELEMENTS
 #-----------------
 
-# create 3 big circles
-c_rad = 2 # radius size in dva
+# create 3 big orbs
+orb_rad = 2 # radius size in dva
 line_color = 'black'
 line_width = 8  # thicker for side circles
 
-circle_left  = visual.Circle(win, 
-                             radius=c_rad, 
+orb_left  = visual.Circle(win, 
+                             radius=orb_rad, 
                              lineColor=line_color,
                              lineWidth=line_width, 
                              pos=(-4,0),
                              edges=256)
-circle_mid   = visual.Circle(win, 
-                             radius=c_rad, 
+orb_central   = visual.Circle(win, 
+                             radius=orb_rad, 
                              lineColor=line_color, 
                              lineWidth=line_width/2,
                              pos=(0,0),
                              edges=256)
-circle_right = visual.Circle(win, 
-                             radius=c_rad, 
+orb_right = visual.Circle(win, 
+                             radius=orb_rad, 
                              lineColor = line_color,
                              lineWidth=line_width ,
                              pos=(4,0),
@@ -204,13 +205,18 @@ token_rad = .15 # in pixels or degrees of visual angle or whatever
 token_color = 'black'
 token_fill  = 'grey'
 token_line_width = .05
-min_pos = -(c_rad) # minimum value for both X and Y axis
-max_pos = c_rad    # maximum value for both X and Y axis
+max_pos = orb_rad-token_rad # max value for circle center for both X and Y axis
+
+#create a list of positions
+#pos_list = 
+#create a grid of positions and allow for jitter around grid point
 
 stims = []  #stimuli list
 for this_token in range(nr_tokens):
-    x_pos = uniform(min_pos, max_pos) # set the x pos for this element in particular
-    y_pos = uniform(min_pos, max_pos) # set the y pos for this element in particular
+    x_pos = uniform(-max_pos, max_pos) # set the x pos for this element in particular
+    #for a given x_pos, we can find a max y_pos that remains within the big circle using Pythagora's theorem
+    max_y_pos = math.sqrt((orb_rad-token_rad)**2 - x_pos**2)
+    y_pos = uniform(-max_y_pos, max_y_pos) # set the x pos for this element in particular
     stims += [visual.Circle(win, 
                             radius=token_rad, 
                             lineColor=token_color,
@@ -245,9 +251,9 @@ for this_token in range(nr_tokens):
 for this_trial in range(3):
 
     #draw big circles
-    circle_left.draw()
-    circle_mid.draw()
-    circle_right.draw()
+    orb_left.draw()
+    orb_central.draw()
+    orb_right.draw()
 
     #draw all elements
     for stim in stims:
