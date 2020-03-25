@@ -47,6 +47,24 @@ token_size = [circle_size / side_tokens, circle_size / side_tokens]
 location = [0, 0]
 loc = np.array(location) + np.array(token_size) // 2
 
+
+def make_tokens(xys, indices, pos):
+    """Creates an elementArrayStim based on given parameters"""
+    # Select xys
+    if len(xys)==len(indices): this_xys = xys #no need to select indices
+    else: 
+        #print(len(xys))
+        #print(len(indices))
+        #print(xys)
+        #print(indices)
+        this_xys = [xys[i] for i in indices] #find corresponding x's,y's
+    # Create the central ElementArrayStim array 
+    tokens = visual.ElementArrayStim(win,
+        xys=this_xys, fieldShape='circle', fieldPos=pos,  
+        colors='white', nElements=len(this_xys), elementMask='circle',
+        elementTex=None, sizes=(token_size[0], token_size[1]))
+    return tokens
+
 for this_trial in range(1):
 
     # SETTING UP COORDINATES FOR EACH TOKEN
@@ -78,20 +96,16 @@ for this_trial in range(1):
     token_sequence = random.sample(token_sequence, len(token_sequence))
 
     # Reduce xys length to the initially desired number of tokens
-    idx_center_all = random.sample(range(len(xys)), wanted_tokens)  #atm only a reshuffle. I could arrange indices by distance to center etc.
-    xys = [xys[i] for i in sel_indices]
+    shortlist = random.sample(range(len(xys)), wanted_tokens)
+    xys = [xys[i] for i in shortlist]
+    # Shuffle list of indices for the new shortlisted xys list
+    idx_center_all = random.sample(range(len(xys)), wanted_tokens) #atm only a reshuffle. I could arrange indices by distance to center etc.
+
     # Indices of tokens that will go either left or right
     idx_left_all   = [i for i, x in enumerate(token_sequence) if x == 'l']
     idx_right_all  = [i for i, x in enumerate(token_sequence) if x == 'r']
 
-    # DRAW THE FULL ARRAY TODO: Do better by adding this step inside loop?
-    # Find corresponding x,y position of selected indices
-    sel_center = [xys[i] for i in idx_center_all]
-    # Create the central ElementArrayStim array 
-    tokens = visual.ElementArrayStim(win,
-        xys=sel_center, fieldShape='circle', fieldPos=loc,  
-        colors='white', nElements=len(sel_center), elementMask='circle',
-        elementTex=None, sizes=(token_size[0], token_size[1]))
+    tokens = make_tokens(xys=xys, indices=idx_center_all, pos=loc)
 
     for this_frame in range(frames_per_token):
         for circle in circles:
@@ -114,37 +128,13 @@ for this_trial in range(1):
 
         # 2a. Tokens remaining centered
         if stay_in_center:  # Test whether list is not empty
-            # Find corresponding x,y position of selected indices
-            sel_center = [xys[i] for i in stay_in_center]
-            # Re-create the central ElementArrayStimray
-            tokens = visual.ElementArrayStim(win,
-                xys=sel_center, fieldShape='circle', fieldPos=loc,  
-                colors='white', nElements=len(sel_center), elementMask='circle',
-                elementTex=None, sizes=(token_size[0], token_size[1]))
-        
+            tokens = make_tokens(xys=xys, indices=stay_in_center, pos=loc)
         # 2b. Tokens going left
         if moved_left:
-            # Find corresponding x,y position of selected indices
-            sel_left = [xys[i] for i in moved_left]
-            # Modify the token position (mirror) and correct for location bias
-            #sel_left = np.array(sel_left)*-1 - token_size
-            # Re-create the left ElementArrayStimray
-            tokens_left = visual.ElementArrayStim(win,
-                xys=sel_left, fieldShape='circle', fieldPos=(loc - (c_offset,0)),  
-                colors='white', nElements=len(sel_left), elementMask='circle',
-                elementTex=None, sizes=(token_size[0], token_size[1]))
-
+            tokens_left = make_tokens(xys=xys, indices=moved_left, pos=(loc - (c_offset,0)))
         # 2c. Tokens going right
         if moved_right:
-            # Find corresponding x,y position of selected indices
-            sel_right = [xys[i] for i in moved_right]
-            # Modify the token position (mirror) and correct for location bias
-            #sel_right = np.array(sel_right)*-1 - token_size
-            # Re-create the left ElementArrayStimray
-            tokens_right = visual.ElementArrayStim(win,
-                xys=sel_right, fieldShape='circle', fieldPos=(loc + (c_offset,0)),  
-                colors='white', nElements=len(sel_right), elementMask='circle',
-                elementTex=None, sizes=(token_size[0], token_size[1]))
+            tokens_right = make_tokens(xys=xys, indices=moved_right, pos=(loc + (c_offset,0)))
 
         # 3. DRAW EVERYTHING
         for this_frame in range(frames_per_token):
