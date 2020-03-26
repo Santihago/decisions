@@ -52,18 +52,18 @@ def make_tokens(xys, indices, pos):
     """Creates an elementArrayStim based on given parameters"""
     # Select xys
     if len(xys)==len(indices): this_xys = xys #no need to select indices
-    else: 
-        #print(len(xys))
-        #print(len(indices))
-        #print(xys)
-        #print(indices)
-        this_xys = [xys[i] for i in indices] #find corresponding x's,y's
+    else: this_xys = [xys[i] for i in indices] #find corresponding x's,y's
     # Create the central ElementArrayStim array 
     tokens = visual.ElementArrayStim(win,
         xys=this_xys, fieldShape='circle', fieldPos=pos,  
         colors='white', nElements=len(this_xys), elementMask='circle',
         elementTex=None, sizes=(token_size[0], token_size[1]))
     return tokens
+
+# Create arrays beforehand
+
+stgs = {}
+stim = {}
 
 for this_trial in range(1):
 
@@ -86,7 +86,7 @@ for this_trial in range(1):
             if (y_pos+loc[0]) > max_y_pos or (y_pos+loc[0]) < -max_y_pos : continue
             else: xys.append((x_pos, y_pos))
 
-    # NOTE: Not sure what this does
+    # NOTE: Not sure what the following does...
     #tokens.size = (token_size[0] * side_tokens,
     #               token_size[1] * side_tokens)
 
@@ -98,49 +98,77 @@ for this_trial in range(1):
     # Reduce xys length to the initially desired number of tokens
     shortlist = random.sample(range(len(xys)), wanted_tokens)
     xys = [xys[i] for i in shortlist]
-    # Shuffle list of indices for the new shortlisted xys list
-    idx_center_all = random.sample(range(len(xys)), wanted_tokens) #atm only a reshuffle. I could arrange indices by distance to center etc.
 
-    # Indices of tokens that will go either left or right
-    idx_left_all   = [i for i, x in enumerate(token_sequence) if x == 'l']
-    idx_right_all  = [i for i, x in enumerate(token_sequence) if x == 'r']
+    # SETTINGS
+    # `pos`: main position: central, left or right
+    # `i_all`: indices for all tokens that will go either left or right
+    # `i_now`: indices of tokens that will be shown at a given moment
+    #TODO: stgs[trial]
+    stgs = {'c' : {
+        'pos'  : loc,
+        'i_all': random.sample(range(len(xys)), wanted_tokens),  # Shuffle list of indices for the new shortlisted xys list
+        'i_now': [ [] for i in range(wanted_tokens) ]  #TODO: Extend for each `this_token`, maybe make this an indexed list
+        }, 
+            'l'   : {
+        'pos'  : (loc - (c_offset, 0)),
+        'i_all': [i for i, x in enumerate(token_sequence) if x == 'l'],
+        'i_now': [ [] for i in range(wanted_tokens) ] 
+        },
+            'r'  : {
+        'pos'  : (loc + (c_offset, 0)),
+        'i_all': [i for i, x in enumerate(token_sequence) if x == 'r'],
+        'i_now': [ [] for i in range(wanted_tokens) ] 
+        }
+    }
 
-    tokens = make_tokens(xys=xys, indices=idx_center_all, pos=loc)
+    # STIMULI. ElementArrays will be stored here.
+    #TODO: stim[trial]
+    stim = {'c' : [ [] for i in range(wanted_tokens) ] ,
+            'l' : [ [] for i in range(wanted_tokens) ] ,
+            'r' : [ [] for i in range(wanted_tokens) ] }
 
+    # Create and store stim at each side at each moment in time
+    for this_token in range(wanted_tokens):
+
+        # 1. Update array indices
+        for side in 'l', 'r':
+            stgs[side]['i_now'][this_token] = [t for t in stgs[side]['i_all'] if t <= this_token]
+        
+        # Now remove the sides indices from the center indices
+        sides = stgs['l']['i_now'][this_token] + stgs['r']['i_now'][this_token]
+        stgs['c']['i_now'][this_token] = [x for x in stgs['c']['i_all'] if x not in sides]
+        
+        # 2. Set each side's array stim using the indices
+        for i_pos in stgs:
+            if stgs[i_pos]['i_now'][this_token]:  #test whether list is not empty
+                print(i_pos)
+                print(stgs[i_pos]['i_now'][this_token])
+                stim[i_pos][this_token] = make_tokens(
+                    xys=xys, 
+                    indices=stgs[i_pos]['i_now'][this_token], 
+                    pos=stgs[i_pos]['pos'])
+
+    # START
+
+    # First, show full array TODO: append this to stim[] instead
+    tokens = make_tokens(
+        xys=xys, 
+        indices=stgs['c']['i_all'], 
+        pos=stgs['c']['pos'])
     for this_frame in range(frames_per_token):
         for circle in circles:
             circle.draw()
         tokens.draw()
         win.flip()
 
-    # TODO: ADD SPACEBAR TO START
+    # TODO: Add a spacebar here
 
-    for this_token in range(len(xys)):
-
-        # 1. UPDATE ALL ARRAY INDICES
-        # TODO: All arrays can and should be previously stored in a list!
-        try: stay_in_center = idx_center_all[this_token+1:]
-        except: stay_in_center = []
-        moved_left = [x for i, x in enumerate(idx_left_all) if x <= this_token]
-        moved_right = [x for i, x in enumerate(idx_right_all) if x <= this_token]
-
-        # 2. SELECT THE ARRAY POSITIONS USING THE INDICES
-
-        # 2a. Tokens remaining centered
-        if stay_in_center:  # Test whether list is not empty
-            tokens = make_tokens(xys=xys, indices=stay_in_center, pos=loc)
-        # 2b. Tokens going left
-        if moved_left:
-            tokens_left = make_tokens(xys=xys, indices=moved_left, pos=(loc - (c_offset,0)))
-        # 2c. Tokens going right
-        if moved_right:
-            tokens_right = make_tokens(xys=xys, indices=moved_right, pos=(loc + (c_offset,0)))
-
-        # 3. DRAW EVERYTHING
+    # 3. Draw
+    for this_token in range(wanted_tokens):
         for this_frame in range(frames_per_token):
-            for circle in circles:
-                circle.draw()
-            if stay_in_center: tokens.draw()   #TODO: tokens[this_circle][this_trial][this_token]
-            if moved_left: tokens_left.draw()
-            if moved_right: tokens_right.draw()
+            for c in circles:
+                c.draw()
+            for s in stim:
+                if stim[s][this_token]:  #test whether list is not empty
+                    stim[s][this_token].draw()
             win.flip()
