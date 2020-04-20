@@ -1,15 +1,29 @@
-from psychopy import visual, event
+from psychopy import core, visual, event
 import numpy as np
 import random
 from math import sqrt, ceil
+
+"""
+# Author: Santiago Muñoz Moldes, University of Cambridge
+# Email: sm2115@cam.ac.uk
+# Start date: March 2020
+"""
+
+""" 
+# TODO
+# - save stgs to log file (and add seed)
+# -
+# -
+"""
 
 #==================
 # GENERAL SETTINGS
 #==================
 
 win = visual.Window(units='pix', color='#1e1e1e')
-frames_per_token = 60//2  #moving speed
+frames_per_token = 60//5  #moving speed
 num_trials = 3
+num_tokens = 30 #set the number of *desired* tokens inside the main circle
 
 #==================
 # STIMULI CREATION
@@ -47,11 +61,11 @@ scale_max = 8 #maximum rating in the rating scale (int)
 rs_col = 'white' # '#373F51'  #charcoal color
 rs_txt_col = 'white' # '#373F51'
 rs_txt_size = 20  #text height in dva
-rs_y_pos = -200
-labels_y_pos = -100  #y position (in DVA) of text labels
-dyn_txt_y_pos = -90 #y position (in DVA) of dynamic rating text
-labels = ["0 %", "100 %"]  #text value of scale labels
-labels_pos = [-100, 100]  #pos values from -1 to 1
+rs_y_pos = -170
+labels_y_pos = -150  #y position (in DVA) of text labels
+dyn_txt_y_pos = -200 #y position (in DVA) of dynamic rating text
+labels = ["<<<", "<<", "<","?",">", ">>", ">>>",]  #text value of scale labels
+labels_pos = [-1,-.66,-.33,0,.33,.66,1]  #pos values FROM -1 TO 1 (not pix)
 ticks_pos = [-50, 0, 50]  #pos values of ticks/bands
 
 #------------- No need to adjust these
@@ -79,7 +93,7 @@ dyn_txt = visual.TextStim(win, text=u"", height=rs_txt_size, color = rs_txt_col)
 
 # Static text (e.g. "Please respond")
 title_pos = 200
-title_txt_size = 30
+title_txt_size = 25
 rs_stims += [visual.TextStim(win, 
              text=u"Confidence response", 
              height=title_txt_size, pos = [0, title_pos], color = rs_txt_col)]
@@ -89,18 +103,16 @@ pretrl_stims += [visual.TextStim(win,
              text=u"Bring mouse to center to start", 
              height=title_txt_size, pos = [0, title_pos], color = rs_txt_col)]
 
-#---------------
+#--------------
 # TOKEN ARRAYS
-#---------------
+#--------------
 # Inspired by: https://discourse.psychopy.org/t/changing-colors-of-tiles-in-a-grid-psychopy-help/4616/6
 
-#set the number of desired tokens inside the main circle
-wanted_tokens = 30
 # now set the grid parameters to approximate the wanted number of tokens
 # this will adjust the number of grid lines and therefore the token size. 
-# it will provide a grid that overshoot the `wanted_tokens` number slightly
+# it will provide a grid that overshoot the `num_tokens` number slightly
 # (those extra tokens can be remove later)
-alt_grid_side = ceil(sqrt(wanted_tokens))
+alt_grid_side = ceil(sqrt(num_tokens))
 grid_side = alt_grid_side*2
 side_tokens = ceil(grid_side*1.3) #constant is abritrary (NOTE: got 1 error with n=15 now)
 #set the size of a token
@@ -122,14 +134,14 @@ def make_tokens(xys, indices, pos):
         elementTex=None, sizes=(token_size[0], token_size[1]))
     return tokens
 
+#=====================
+# PRE-SETTINGS ARRAYS
+#=====================
+
 # Create empty arrays beforehand
 
 stgs = []
 stim = []
-
-#=====================
-# PRE-SETTINGS ARRAYS
-#=====================
 
 for trl in range(num_trials):
 
@@ -152,7 +164,7 @@ for trl in range(num_trials):
             if (y_pos+loc[0]) > max_y_pos or (y_pos+loc[0]) < -max_y_pos : continue
             else: xys.append((x_pos, y_pos))
 
-    # NOTE: Not sure what the following does...
+    # NOTE: Not sure what the following does...:
     #tokens.size = (token_size[0] * side_tokens,
     #               token_size[1] * side_tokens)
 
@@ -162,7 +174,7 @@ for trl in range(num_trials):
     token_sequence = random.sample(token_sequence, len(token_sequence))
 
     # Reduce xys length to the initially desired number of tokens
-    shortlist = random.sample(range(len(xys)), wanted_tokens)
+    shortlist = random.sample(range(len(xys)), num_tokens)
     xys = [xys[i] for i in shortlist]
 
     # SETTINGS
@@ -172,28 +184,28 @@ for trl in range(num_trials):
     #TODO: stgs[trial]
     stgs += [{'c' : {
         'pos'  : loc,
-        'i_all': random.sample(range(len(xys)), wanted_tokens),  # Shuffle list of indices for the new shortlisted xys list
-        'i_now': [ [] for i in range(wanted_tokens) ]  #TODO: Extend for each `this_token`, maybe make this an indexed list
+        'i_all': random.sample(range(len(xys)), num_tokens),  # Shuffle list of indices for the new shortlisted xys list
+        'i_now': [ [] for i in range(num_tokens) ]  #TODO: Extend for each `this_token`, maybe make this an indexed list
         }, 
             'l'   : {
         'pos'  : (loc - (c_offset, 0)),
         'i_all': [i for i, x in enumerate(token_sequence) if x == 'l'],
-        'i_now': [ [] for i in range(wanted_tokens) ] 
+        'i_now': [ [] for i in range(num_tokens) ] 
         },
             'r'  : {
         'pos'  : (loc + (c_offset, 0)),
         'i_all': [i for i, x in enumerate(token_sequence) if x == 'r'],
-        'i_now': [ [] for i in range(wanted_tokens) ] 
+        'i_now': [ [] for i in range(num_tokens) ] 
         }
     }]
 
     # STIMULI. ElementArrays will be stored here.
-    stim += [{'c' : [ [] for i in range(wanted_tokens) ],
-            'l' : [ [] for i in range(wanted_tokens) ],
-            'r' : [ [] for i in range(wanted_tokens) ]}]
+    stim += [{'c' : [ [] for i in range(num_tokens) ],
+              'l' : [ [] for i in range(num_tokens) ],
+              'r' : [ [] for i in range(num_tokens) ]}]
 
     # Create and store stim at each side at each moment in time
-    for this_token in range(wanted_tokens):
+    for this_token in range(num_tokens):
         # 1. Update array indices
         for side in 'l', 'r':
             stgs[trl][side]['i_now'][this_token] = [t for t in stgs[trl][side]['i_all'] if t <= this_token]
@@ -208,10 +220,12 @@ for trl in range(num_trials):
                     indices=stgs[trl][i_pos]['i_now'][this_token], 
                     pos=stgs[trl][i_pos]['pos'])
 
-    # Add the full stim at the end of each trial list
+    # Add also the full array at the end of each trial list  # `trl` will always give the +1
     stim[trl]['c'] += [make_tokens(xys=xys, 
                               indices=stgs[trl]['c']['i_all'], 
                               pos=stgs[trl]['c']['pos'])]
+
+    # Save stgs to file
 
 #=======
 # START
@@ -219,33 +233,34 @@ for trl in range(num_trials):
 
 for trl in range(num_trials):
 
+    ratings_this_trial = []  #continuous rating vector
+    responded = False
     mouse.setPos([0,-300])
     mouse.clickReset()
 
     while not circles[1].contains(mouse):  # 1 is central circle
+        #draw titles and other
+        for s in pretrl_stims:
+            s.draw()
         #draw big circles
         for c in circles:
             c.draw()
         #draw the full central array
-        stim[trl]['c'][wanted_tokens].draw()
-        #draw titles and other
-        for s in pretrl_stims:
-            s.draw()
+        stim[trl]['c'][num_tokens].draw()
+
         win.flip()
 
     # Start moving tokens
-    for this_token in range(wanted_tokens):
+    for this_token in range(num_tokens):
+        # Visual stimuli are updated each frame
         for this_frame in range(frames_per_token):
-
-            # STATIC STIMULI
+            #draw static big circles
             for c in circles:
                 c.draw()
-
-            # RATING SCALE
-            #draw all components of the rating scale
+            #draw static rating scale elements
             for s in rs_stims:
                 s.draw()
-            #set slider and dynamic text position to mouse and draw 
+            #set parameters for dynamic rating scale elements
             m_x, m_y = mouse.getPos()
             if m_x < _rs_min: m_x = _rs_min  #clipped -X position
             if m_x > _rs_max: m_x = _rs_max  #clipped +X position
@@ -257,8 +272,22 @@ for trl in range(num_trials):
             dyn_txt.setPos([m_x, dyn_txt_y_pos])
             dyn_txt.setText("CONFIDENCE: " + str(RATING))
             dyn_txt.draw()
-
+            
+            #draw the current token array
             for s in stim[trl]:
                 if stim[trl][s][this_token]:  #test whether list is not empty
                     stim[trl][s][this_token].draw()
             win.flip()
+
+            #record response
+            #listen to mouse click and record timestamp
+            buttons, RT = mouse.getPressed(getTime=True)  #returns 3-item list and time since reset
+            if not responded and buttons[0]:  #first click detected
+                detected = True
+                detectedRT = round(RT[0], 2)  #timestamp
+                rs_slider.setFillColor('#1A7AF8')  #change slider color to blue
+                mouse.clickReset()  #reset mouse
+            #save continuous rating sampled at each frame in a vector
+            ratings_this_trial.append(RATING)
+            
+            if event.getKeys(['escape']): core.quit()
