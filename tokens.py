@@ -41,67 +41,12 @@ line_color = 'white'  #color of the circle border
 line_width = 2.5  #width of the circle border
 line_edges = 256  #number of edges to create the circle
 c_offset = 200  #offset from the center in the x axis for the 2 periph circles
+c_y_pos = 200
 circles = []
 for pos in -c_offset, 0, c_offset:
     circles += [visual.Circle(win, 
         radius=circle_radius, lineColor=line_color, lineWidth=line_width,
-        pos=(pos, 0), edges=line_edges, interpolate=False)]
-
-#------------------
-# RESPONSE STIMULI
-#------------------
-
-# Mouse
-mouse = event.Mouse(visible=True, win=win)
-
-# Dynamix text and stimuli
-#------------- You can adjust these
-rs_size = 400 #scale size in degrees of visual angle (DVA)
-scale_max = 8 #maximum rating in the rating scale (int)
-rs_col = 'white' # '#373F51'  #charcoal color
-rs_txt_col = 'white' # '#373F51'
-rs_txt_size = 20  #text height in dva
-rs_y_pos = -170
-labels_y_pos = -150  #y position (in DVA) of text labels
-dyn_txt_y_pos = -200 #y position (in DVA) of dynamic rating text
-labels = ["<<<", "<<", "<","?",">", ">>", ">>>",]  #text value of scale labels
-labels_pos = [-1,-.66,-.33,0,.33,.66,1]  #pos values FROM -1 TO 1 (not pix)
-ticks_pos = [-50, 0, 50]  #pos values of ticks/bands
-
-#------------- No need to adjust these
-_rs_max = rs_size/2  #scale rightmost value
-_rs_min = (-1 * _rs_max)  #scale leftmost value
-rs_stims = []  #scale stimuli list
-#horizontal bar
-rs_stims += [visual.Rect(win, width=_rs_max*2, height=.1, fillColor = rs_col,
-             lineColor = rs_col, pos = (0, rs_y_pos))]
-#add text labels
-labels_x_pos = [x * _rs_max for x in labels_pos]
-for nr, this_x_pos in enumerate(labels_x_pos):
-    rs_stims += [visual.TextStim(win, text=labels[nr], height=rs_txt_size,
-                 pos = [this_x_pos, labels_y_pos], color = rs_txt_col)]
-#add ticks / bands
-ticks_x_pos = [x * _rs_max for x in ticks_pos]
-for this_x_pos in ticks_x_pos: # Mini-ticks
-    rs_stims += [visual.Rect(win, width=5, height=25, pos = [this_x_pos, rs_y_pos], 
-                 fillColor = rs_col, opacity = 75)]
-#moving slider
-rs_slider = visual.Rect(win, width=5, height=10, fillColor = rs_col,
-                        lineColor = rs_col)
-#moving text
-dyn_txt = visual.TextStim(win, text=u"", height=rs_txt_size, color = rs_txt_col)
-
-# Static text (e.g. "Please respond")
-title_pos = 200
-title_txt_size = 25
-rs_stims += [visual.TextStim(win, 
-             text=u"Confidence response", 
-             height=title_txt_size, pos = [0, title_pos], color = rs_txt_col)]
-
-pretrl_stims = []
-pretrl_stims += [visual.TextStim(win, 
-             text=u"Bring mouse to center to start", 
-             height=title_txt_size, pos = [0, title_pos], color = rs_txt_col)]
+        pos=(pos, c_y_pos), edges=line_edges, interpolate=False)]
 
 #--------------
 # TOKEN ARRAYS
@@ -118,7 +63,7 @@ side_tokens = ceil(grid_side*1.3) #constant is abritrary (NOTE: got 1 error with
 #set the size of a token
 token_size = [circle_size / side_tokens, circle_size / side_tokens]
 #set where the grid is positioned
-location = [0, 0]
+location = [0, c_y_pos]
 loc = np.array(location) + np.array(token_size) // 2
 
 
@@ -134,12 +79,16 @@ def make_tokens(xys, indices, pos):
         elementTex=None, sizes=(token_size[0], token_size[1]))
     return tokens
 
-#=====================
-# PRE-SETTINGS ARRAYS
-#=====================
+def clip(val, min_, max_):
+    return min_ if val < min_ else max_ if val > max_ else val
+
+#-------------------
+# PRELOADING ARRAYS
+#-------------------
+"""I create all central token arrays with randomly jittered tokens.
+First define all positions and then create stimuli arrays."""
 
 # Create empty arrays beforehand
-
 stgs = []
 stim = []
 
@@ -226,19 +175,81 @@ for trl in range(num_trials):
                               pos=stgs[trl]['c']['pos'])]
 
     # Save stgs to file
+    # NOTE: TODO.
+
+#------------------
+# RESPONSE STIMULI
+#------------------
+
+# Mouse
+mouse = event.Mouse(visible=True, win=win)
+
+# Dynamix text and stimuli
+#------------- You can adjust these
+slider_start_y_pos = -200
+rs_col = 'white' # '#373F51'  #charcoal color
+rs_txt_col = 'white' # '#373F51'
+rs_txt_size = 20  #text height in dva
+
+#------------- No need to adjust these
+#drawing rectangle
+draw_area_coord = (slider_start_y_pos, location[1]-circle_radius)  # top, bottom
+draw_rect_height = abs(abs(draw_area_coord[1]) - draw_area_coord[0])  # top - bottom
+draw_rect_center = draw_area_coord[1] - draw_rect_height/2
+#stimuli list for drawing area
+cursor_stims = []  
+cursor_stims += [visual.Rect(win, width=.1, height=draw_rect_height, 
+                    fillColor = rs_col, lineColor = rs_col, 
+                    pos = (0, draw_rect_center))]
+
+#moving slider
+cursor_rad = 5
+cursor = visual.Circle(win, 
+        radius=cursor_rad, lineColor=line_color, fillColor=line_color,
+        lineWidth=line_width, interpolate=False)
+
+#stimuli for cursor shadow
+shadow_length = 10
+shadow_stim = []
+for i in range(shadow_length):
+    shadow_rad = cursor_rad/shadow_length*(i+1)
+    shadow_stim += [visual.Circle(win, 
+        radius=shadow_rad, lineColor=line_color, fillColor=line_color,
+        lineWidth=line_width, interpolate=False)]
+
+# Static text (e.g. "Please respond")
+title_pos = 0  # y position for the text
+pretrl_stims = []
+pretrl_stims += [visual.Polygon(win, edges=3, radius=10, fillColor = rs_col,
+            lineColor = rs_col, pos = (0, slider_start_y_pos))]
+pretrl_stims += [visual.TextStim(win, 
+            text=u"Bring mouse to bottom shape to start", 
+            height=rs_txt_size, pos = [0, title_pos], color = rs_txt_col)]
+
+# Upward mouse movement
+#we calulate vertical step that is added each frame
+y_step = draw_rect_height/(num_tokens*frames_per_token)
 
 #=======
 # START
 #=======
 
+#event.Mouse(visible=False)
+timer = core.Clock()
+
 for trl in range(num_trials):
 
-    ratings_this_trial = []  #continuous rating vector
-    responded = False
-    mouse.setPos([0,-300])
+    #general trial settings
+    trl_path  = []  #continuous rating vector: tuples for pos, and time (variable length each trial)
+    trl_times = []  #timestamp for each recorded position
+
+    moving = True
+    response = False
+    #mouse.setPos([0, slider_start_y_pos])
     mouse.clickReset()
 
-    while not circles[1].contains(mouse):  # 1 is central circle
+    #draw on screen pre-trial stimuli until mouse reaches start position
+    while not pretrl_stims[0].contains(mouse):  # [] indexes the target shape
         #draw titles and other
         for s in pretrl_stims:
             s.draw()
@@ -250,44 +261,74 @@ for trl in range(num_trials):
 
         win.flip()
 
-    # Start moving tokens
+        #allow to quit if necessary TODO: add quit confirmation
+        if event.getKeys(['escape']): core.quit()
+
+    #start moving tokens!
+    timer.reset()
     for this_token in range(num_tokens):
         # Visual stimuli are updated each frame
         for this_frame in range(frames_per_token):
+
             #draw static big circles
+            #change appearance if mouse reaches side cicles
+            for side_c in circles[0], circles[2]:
+                if side_c.contains(mouse): 
+                    side_c.setLineWidth(line_width*3)
+                    response = True
+                    rt = round(timer.getTime(), 3)  #timestamp
+                else: side_c.setLineWidth(line_width)
             for c in circles:
                 c.draw()
             #draw static rating scale elements
-            for s in rs_stims:
+            for s in cursor_stims:
                 s.draw()
-            #set parameters for dynamic rating scale elements
+            #get mouse position and set within limits
             m_x, m_y = mouse.getPos()
-            if m_x < _rs_min: m_x = _rs_min  #clipped -X position
-            if m_x > _rs_max: m_x = _rs_max  #clipped +X position
-            rs_slider.setPos([m_x, rs_y_pos])
-            rs_slider.draw()
-            #re-scale rating value to given range
-            RATING = int(((m_x+_rs_max)/_rs_max)*(scale_max/2))
-            #draw value of rating on the screen at mouse position
-            dyn_txt.setPos([m_x, dyn_txt_y_pos])
-            dyn_txt.setText("CONFIDENCE: " + str(RATING))
-            dyn_txt.draw()
-            
+            #store mouse position
+            trl_path.append((m_x, m_y))  # record current mouse positions
+            trl_times.append(round(timer.getTime(), 2))  # record time of mouse position
+
+            # Calculate mouse velocity
+            #distance between last and previous recorded coordiantes (between two frames)
+            # time in frames for the duration of the travel
+            #TODO: change depending on initial hz
+            t_in_frames = 15
+            if len(trl_path) > t_in_frames:
+                m_velocity = sqrt((trl_path[-1][0] - trl_path[-t_in_frames][0])**2 + 
+                                  (trl_path[-1][1] - trl_path[-t_in_frames][1])**2)
+                if m_velocity > 0: 
+                    moving = True
+                    cursor.setFillColor('white')
+                else:
+                    moving = False
+                    cursor.setFillColor('red')
+
+            # Prepare cursor visualisation
+
+            # a. cursor shadow
+            if len(trl_path) > shadow_length:
+                shadow_pos = trl_path[-shadow_length:]
+                for i, pos in enumerate(shadow_pos):
+                    shadow_stim[i].setPos(pos) 
+                    shadow_stim[i].setOpacity(1/shadow_length*(i+1))
+                    shadow_stim[i].draw()
+
+            # b. Current cursor
+            #horizontal limits
+            #if m_x < -c_offset: m_x = -c_offset  #clipped -X position
+            #if m_x > c_offset: m_x = c_offset  #clipped +X position
+            # TODO: cannot go down vertically
+            # OR better: there is minimum upward motion if speed <= 0? (but problem of mismatch finger/cursor)
+            #set new position
+            cursor.setPos([m_x, m_y])
+            cursor.draw()
+
             #draw the current token array
             for s in stim[trl]:
                 if stim[trl][s][this_token]:  #test whether list is not empty
                     stim[trl][s][this_token].draw()
             win.flip()
 
-            #record response
-            #listen to mouse click and record timestamp
-            buttons, RT = mouse.getPressed(getTime=True)  #returns 3-item list and time since reset
-            if not responded and buttons[0]:  #first click detected
-                detected = True
-                detectedRT = round(RT[0], 2)  #timestamp
-                rs_slider.setFillColor('#1A7AF8')  #change slider color to blue
-                mouse.clickReset()  #reset mouse
-            #save continuous rating sampled at each frame in a vector
-            ratings_this_trial.append(RATING)
-            
+            #listen to keyboard and allow to quit
             if event.getKeys(['escape']): core.quit()
