@@ -215,8 +215,12 @@ cursor = visual.Circle(win,
         radius=cursor_rad, lineColor=line_color, fillColor=line_color,
         lineWidth=line_width, interpolate=False)
 
+#Time window for mouse velocity calculation
+#TODO: change depending on initial hz
+t_in_frames = 15
+
 #stimuli for cursor shadow
-shadow_length = 6
+shadow_length = 10
 shadow_stim = []
 for i in range(shadow_length):
     shadow_rad = cursor_rad/shadow_length*(i+1)
@@ -308,12 +312,10 @@ for trl in range(num_trials):
             # Calculate mouse velocity
             #distance between last and previous recorded coordiantes (between two frames)
             # time in frames for the duration of the travel
-            #TODO: change depending on initial hz
-            t_in_frames = 15
-            if len(trl_path) > t_in_frames:
+            if len(trl_path) > t_in_frames:  # start measuring after a time minimum
                 m_velocity = sqrt((trl_path[-1][0] - trl_path[-t_in_frames][0])**2 + 
                                   (trl_path[-1][1] - trl_path[-t_in_frames][1])**2)
-                if m_velocity > 0: 
+                if m_velocity > 0:
                     moving = True
                     #cursor.setFillColor('white')
                     area.setFillColor('white')
