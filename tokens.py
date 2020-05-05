@@ -35,11 +35,23 @@ num_tokens = 30 #set the number of *desired* tokens inside the main circle
 # MAIN VISUAL STIMULI
 #---------------------
 
+
+# Colors
+#Darktheme
+greenish = "#52D273"
+redish = "#E94F64"
+yellowish = "#EAD15D"
+whitish = "#F2F2F2"
+
+#Neutraltheme
+
+
+
 # BIG CIRCLES
 # Create 3 big circles
 circle_size = 130  #set the circle diameter
 circle_radius = circle_size/2
-line_color = 'white'  #color of the circle border
+line_color = whitish  #color of the circle border
 line_width = 2.5  #width of the circle border
 line_edges = 256  #number of edges to create the circle
 c_offset = 200  #offset from the center in the x axis for the 2 periph circles
@@ -77,7 +89,7 @@ def make_tokens(xys, indices, pos):
     # Create the central ElementArrayStim array 
     tokens = visual.ElementArrayStim(win,
         xys=this_xys, fieldShape='circle', fieldPos=pos,  
-        colors='white', nElements=len(this_xys), elementMask='circle',
+        colors=whitish, nElements=len(this_xys), elementMask='circle',
         elementTex=None, sizes=(token_size[0], token_size[1]))
     return tokens
 
@@ -189,8 +201,8 @@ mouse = event.Mouse(visible=True, win=win)
 # Dynamix text and stimuli
 #------------- You can adjust these
 slider_start_y_pos = -200
-rs_col = 'white' # '#373F51'  #charcoal color
-rs_txt_col = 'white' # '#373F51'
+rs_col = whitish
+rs_txt_col = whitish 
 rs_txt_size = 20  #text height in dva
 
 #------------- No need to adjust these
@@ -318,11 +330,11 @@ for trl in range(num_trials):
                 if m_velocity > 0:
                     moving = True
                     #cursor.setFillColor('white')
-                    area.setFillColor('white')
+                    area.setFillColor(whitish)
                 else:
                     moving = False
                     #cursor.setFillColor('red')
-                    area.setFillColor('red')
+                    area.setFillColor(redish)
 
             # Prepare cursor visualisation
 
@@ -362,9 +374,9 @@ for trl in range(num_trials):
                 if not tokens_remaining and last_frame: #last token, feedback and record something
                     #display feedback
                     if sel_side_letter == correct_side: 
-                        circles[sel_side_num].setLineColor('green')
+                        circles[sel_side_num].setLineColor(greenish)
                     else:
-                        circles[sel_side_num].setLineColor('red')
+                        circles[sel_side_num].setLineColor(redish)
                         
             if not responded and not tokens_remaining:
                 #no response, "too slow" message or similar
