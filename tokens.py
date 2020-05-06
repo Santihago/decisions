@@ -1,9 +1,10 @@
 from psychopy import core, visual, event
 import numpy as np
 import random
-from math import sqrt, ceil
+from math import sqrt, ceil, sin
 
 """
+
 # Author: Santiago Muñoz Moldes, University of Cambridge
 # Email: sm2115@cam.ac.uk
 # Start date: March 2020
@@ -12,13 +13,11 @@ from math import sqrt, ceil
 """ 
 # TODO
 # - save stgs to log file (and add seed)
-# -
-# -
 """
 
-#==================
-# GENERAL SETTINGS
-#==================
+#=====================
+# 1. GENERAL SETTINGS
+#=====================
 
 win = visual.Window(units='pix', color='#1e1e1e')
 slow_speed = 60//5  #normal moving speed
@@ -27,28 +26,22 @@ frames_per_token = slow_speed
 num_trials = 3
 num_tokens = 30 #set the number of *desired* tokens inside the main circle
 
-#==================
-# STIMULI CREATION
-#==================
+#=====================
+# 2. STIMULI CREATION
+#=====================
 
-#---------------------
-# MAIN VISUAL STIMULI
-#---------------------
+#-------------------------
+# 2.1 MAIN VISUAL STIMULI
+#-------------------------
 
-
-# Colors
-#Darktheme
+# 2.1.1 Colors for darktheme
+blackish = "#1e1e1e"
 greenish = "#52D273"
 redish = "#E94F64"
 yellowish = "#EAD15D"
 whitish = "#F2F2F2"
 
-#Neutraltheme
-
-
-
-# BIG CIRCLES
-# Create 3 big circles
+# 2.1.2 Create 3 big circles
 circle_size = 130  #set the circle diameter
 circle_radius = circle_size/2
 line_color = whitish  #color of the circle border
@@ -60,17 +53,17 @@ circles = []
 for pos in -c_offset, 0, c_offset:
     circles += [visual.Circle(win, 
         radius=circle_radius, lineColor=line_color, lineWidth=line_width,
-        pos=(pos, c_y_pos), edges=line_edges, interpolate=False)]
+        pos=(pos, c_y_pos), edges=line_edges, interpolate=True)]
 
-#--------------
-# TOKEN ARRAYS
-#--------------
-# Inspired by: https://discourse.psychopy.org/t/changing-colors-of-tiles-in-a-grid-psychopy-help/4616/6
+#------------------
+# 2.2 TOKEN ARRAYS
+#------------------
+"""Inspired by: https://discourse.psychopy.org/t/changing-colors-of-tiles-in-a-grid-psychopy-help/4616/6
 
-# now set the grid parameters to approximate the wanted number of tokens
-# this will adjust the number of grid lines and therefore the token size. 
-# it will provide a grid that overshoot the `num_tokens` number slightly
-# (those extra tokens can be remove later)
+Now set the grid parameters to approximate the wanted number of tokens
+this will adjust the number of grid lines and therefore the token size. 
+it will provide a grid that overshoot the `num_tokens` number slightly
+(those extra tokens can be remove later)"""
 alt_grid_side = ceil(sqrt(num_tokens))
 grid_side = alt_grid_side*2
 side_tokens = ceil(grid_side*1.3) #constant is abritrary (NOTE: got 1 error with n=15 now)
@@ -96,10 +89,10 @@ def make_tokens(xys, indices, pos):
 def clip(val, min_, max_):
     return min_ if val < min_ else max_ if val > max_ else val
 
-#-------------------
+#- - - - - - - - - -
 # PRELOADING ARRAYS
-#-------------------
-"""I create all central token arrays with randomly jittered tokens.
+#- - - - - - - - - -
+"""Here I create all central token arrays with randomly jittered tokens.
 First define all positions and then create stimuli arrays."""
 
 # Create empty arrays beforehand
@@ -191,37 +184,16 @@ for trl in range(num_trials):
     # Save stgs to file
     # NOTE: TODO.
 
-#------------------
-# RESPONSE STIMULI
-#------------------
+#----------------------
+# 2.3 RESPONSE STIMULI
+#----------------------
 
-# Mouse
+#- - - - - - - - - -
+# Mouse and cursor
+#- - - - - - - - - -
+
 mouse = event.Mouse(visible=True, win=win)
-
-# Dynamix text and stimuli
-#------------- You can adjust these
-slider_start_y_pos = -200
-rs_col = whitish
-rs_txt_col = whitish 
-rs_txt_size = 20  #text height in dva
-
-#------------- No need to adjust these
-#drawing rectangle
-draw_area_coord = (slider_start_y_pos, location[1]-circle_radius)  # top, bottom
-draw_rect_height = abs(abs(draw_area_coord[1]) - draw_area_coord[0])  # top - bottom
-draw_rect_x = 0
-draw_rect_y = draw_area_coord[1] - draw_rect_height/2
-
-# Moving lower bound
-#we calulate vertical step that is added each frame
-y_step = draw_rect_height/(num_tokens*frames_per_token)
-#stimuli list for drawing area
-area = visual.Rect(win, width=500, height=draw_rect_height, 
-                    fillColor = rs_col, lineColor = rs_col, 
-                    pos = (draw_rect_x, draw_rect_y),
-                    opacity = .2)
-
-#moving slider
+cursor_start_y_pos = -200
 cursor_rad = 5
 cursor = visual.Circle(win, 
         radius=cursor_rad, lineColor=line_color, fillColor=line_color,
@@ -240,47 +212,68 @@ for i in range(shadow_length):
         radius=shadow_rad, lineColor=line_color, fillColor=line_color,
         lineWidth=line_width, interpolate=False)]
 
-# Static text (e.g. "Please respond")
+#- - - - - - - - - - -
+# Moving drawing area
+#- - - - - - - - - - -
+
+draw_area_coord = (cursor_start_y_pos, location[1]-circle_radius)  # top, bottom
+draw_rect_height = abs(abs(draw_area_coord[1]) - draw_area_coord[0])  # top - bottom
+draw_rect_x = 0
+draw_rect_y = draw_area_coord[1] - draw_rect_height/2
+#we calulate vertical step that is added each frame
+y_step = draw_rect_height/(num_tokens*frames_per_token)
+#stimuli list for drawing area
+area = visual.Rect(win, width=500, height=draw_rect_height, 
+                    fillColor = whitish, lineColor = whitish, 
+                    pos = (draw_rect_x, draw_rect_y),
+                    opacity = .75)
+
+#- - - - - - - - - - -
+# Static text and other
+#- - - - - - - - - - -
+
+txt_size = 20  #text height in dva
 title_pos = 0  # y position for the text
 pretrl_stims = []
-pretrl_stims += [visual.Polygon(win, edges=3, radius=10, fillColor = rs_col,
-            lineColor = rs_col, pos = (0, slider_start_y_pos))]
+pretrl_stims += [visual.Polygon(win, edges=3, radius=10, fillColor = yellowish,
+            lineColor = yellowish, pos = (0, cursor_start_y_pos))]
 pretrl_stims += [visual.TextStim(win, 
             text=u"Bring mouse to bottom shape to start", 
-            height=rs_txt_size, pos = [0, title_pos], color = rs_txt_col)]
+            height=txt_size, pos = [0, title_pos], color = whitish)]
 
-#=======
-# START
-#=======
+#==============
+# 3. TRIAL LOOP
+#==============
 
 for trl in range(num_trials):
 
-    # Reset some values
-
+    # 3.1 Reset some values at each trial
     trl_path  = []  #continuous rating vector: tuples for pos, and time (variable length each trial)
     trl_times = []  #timestamp for each recorded position
-    for side in 0, 2: circles[side].setLineColor(line_color)
+    for side in 0, 2: circles[side].setLineColor(line_color)  #reset colors
     moving = True  #mouse
     show_shadow = True
     show_cursor = True
     show_area = True
-    tokens_remaining = True
     responded = False
+    last_token = False
     last_frame = False
     frames_per_token = slow_speed
-    #mouse.setPos([0, slider_start_y_pos])
+    #mouse.setPos([0, cursor_start_y_pos])
     mouse.clickReset()
     lower_bound = draw_area_coord[0]  #restart the value each trial
 
-    # Trial information
-    correct_side = 'l' #TODO: change to get from sequences
-
-    # Mouse visibility and start timer
     event.Mouse(visible=True)  #make mouse visible (again)
     timer = core.Clock()  #start a trial timer
 
-    #draw on screen pre-trial stimuli until mouse reaches start position
+    # 3.2 Set some trial information
+    correct_side = 'l' #TODO: change to get from sequences
+
+    # 3.3 Draw on screen pre-trial stimuli until mouse reaches start position
     while not pretrl_stims[0].contains(mouse):  # [] indexes the target shape
+        
+        #make the starting space blink
+        pretrl_stims[0].setOpacity(abs(sin(timer.getTime()*2)))
         #draw titles and other
         for s in pretrl_stims:
             s.draw()
@@ -290,23 +283,37 @@ for trl in range(num_trials):
         #draw the full central array
         stim[trl]['c'][num_tokens].draw()
 
+        #flip to the screen while mouse not on position
         win.flip()
 
         #allow to quit if necessary TODO: add quit confirmation
         if event.getKeys(['escape']): core.quit()
 
-    # Mouse is on position, start moving tokens!
+    #===============
+    # 4. TOKEN LOOP
+    #===============
+    """Mouse is on position, start moving tokens!"""
+
     event.Mouse(visible=False)  #make mouse disappear
-    timer.reset()
+    timer.reset()  #restart the trial timer
     for this_token in range(num_tokens):
-        if this_token == num_tokens-1: tokens_remaining = False
-        # Visual stimuli are updated each frame
+        #detect whether this is the last token for special case
+        if this_token == num_tokens-1: 
+            last_token = True
+
+        #===============
+        # 5. FRAME LOOP
+        #===============
+        """For each token, visual stimuli are updated each frame"""
+
         for this_frame in range(frames_per_token):
-            if this_frame == frames_per_token-1 and not tokens_remaining: 
+            # 5.0 Detect whether this is the last token (for special case)
+            if this_frame == frames_per_token-1 and last_token: 
                 last_frame = True
 
-            # Drawing area: with moving lower bound
-            #we calulate vertical step that is added each frame
+            # 5.1 Update drawing area
+            #draw an area for drawing with a moving lower bound
+            #we calulate the vertical step that is added each frame
             if show_area:
                 lower_bound += y_step
                 new_height = abs(abs(draw_area_coord[1]) - lower_bound)
@@ -315,13 +322,14 @@ for trl in range(num_trials):
                 area.setPos((draw_rect_x, new_y))
                 area.draw()
 
-            # Get mouse position and set within limits
+            # 5.2 Update mouse and cursor
+            #5.2.1 Get mouse position and, if needed, set within limits
             m_x, m_y = mouse.getPos()
-            #store mouse position
+            #5.2.2 Store mouse position
             trl_path.append((m_x, m_y))  # record current mouse positions
             trl_times.append(round(timer.getTime(), 2))  # record time of mouse position
 
-            # Calculate mouse velocity
+            #5.2.3 Calculate mouse velocity
             #distance between last and previous recorded coordiantes (between two frames)
             # time in frames for the duration of the travel
             if len(trl_path) > t_in_frames:  # start measuring after a time minimum
@@ -336,7 +344,7 @@ for trl in range(num_trials):
                     #cursor.setFillColor('red')
                     area.setFillColor(redish)
 
-            # Prepare cursor visualisation
+            #5.2.4 Prepare cursor visualisation
 
             # a. cursor shadow
             if show_shadow:
@@ -355,34 +363,34 @@ for trl in range(num_trials):
             # OR better: there is minimum upward motion if speed <= 0? (but problem of mismatch finger/cursor)
             #set new position
             cursor.setPos([m_x, m_y])
-            if show_cursor:
-                cursor.draw()
+            if show_cursor: cursor.draw()
 
-            #draw the current token array
+            # 5.3 Update the current token array
             for s in stim[trl]:
                 if stim[trl][s][this_token]:  #test whether list is not empty
                     stim[trl][s][this_token].draw()
 
-            #if responded, go through all remaining tokens but faster
+            # 5.4 Special case after response or missed response
+            # if responded, go through all remaining tokens but faster
             #break will skip all planned frames, but we can add another short delay
             if responded:
-                if tokens_remaining:
+                if not last_token:
                     frames_per_token = fast_speed
                     show_cursor = False
                     show_shadow = False
                     show_area = False
-                if not tokens_remaining and last_frame: #last token, feedback and record something
+                if last_token and last_frame: #last token, feedback and record something
                     #display feedback
                     if sel_side_letter == correct_side: 
                         circles[sel_side_num].setLineColor(greenish)
                     else:
                         circles[sel_side_num].setLineColor(redish)
                         
-            if not responded and not tokens_remaining:
+            if not responded and last_token:
                 #no response, "too slow" message or similar
                 continue
 
-            # Draw static big circles
+            # 5.5 Draw static big circles
             #change appearance if mouse reaches side cicles
             for side in 0, 2:
                 if circles[side].contains(mouse): 
@@ -395,11 +403,19 @@ for trl in range(num_trials):
             for c in circles:
                 c.draw()
 
-            # Flip everything that has been drawn
+            # 5.6 Flip everything that has been drawn on screen
             win.flip()
 
-            if not tokens_remaining and last_frame:
+            # 5.7 Ask for manual input if trial ended
+            if last_token and last_frame:
+                #save trial information
+                # trials.addData(trl_path)
+                # trials.addData(trl_times)
+                # correct/incorrect
+
+
+                #requier manual input to continue
                 keypress = event.waitKeys(keyList=['space', 'escape'])
 
-            #listen to keyboard and allow to quit
+            # 5.8 Continously allow to quit if escape is pressed
             if event.getKeys(['escape']): core.quit()
