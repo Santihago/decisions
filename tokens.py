@@ -233,7 +233,7 @@ area = visual.Rect(win, width=500, height=draw_rect_height,
 #- - - - - - - - - - -
 
 txt_size = 20  #text height in dva
-title_pos = 0  # y position for the text
+title_pos = -150  # y position for the text
 pretrl_stims = []
 pretrl_stims += [visual.Polygon(win, edges=3, radius=10, fillColor = yellowish,
             lineColor = yellowish, pos = (0, cursor_start_y_pos))]
@@ -241,16 +241,19 @@ pretrl_stims += [visual.TextStim(win,
             text=u"Bring mouse to bottom shape to start", 
             height=txt_size, pos = [0, title_pos], color = whitish)]
 
-#==============
+#===============
 # 3. TRIAL LOOP
-#==============
+#===============
 
 for trl in range(num_trials):
 
     # 3.1 Reset some values at each trial
     trl_path  = []  #continuous rating vector: tuples for pos, and time (variable length each trial)
     trl_times = []  #timestamp for each recorded position
-    for side in 0, 2: circles[side].setLineColor(line_color)  #reset colors
+    for side in 0, 2: 
+        circles[side].setLineColor(line_color)  #reset colors
+        circles[side].setLineWidth(line_width)  #reset line width
+
     moving = True  #mouse
     show_shadow = True
     show_cursor = True
