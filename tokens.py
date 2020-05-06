@@ -66,22 +66,23 @@ exp_info['exp_name']=exp_name
 # 1.3 File saving
 """Create functions to handle trial logging"""
 
+dir = 'data'
+filename = dir + os.path.sep + exp_name + '_' + '%s_%s' %(exp_info['id'], exp_info['date']) + '.csv' #generate file name with name of the experiment
+logfile = logging.LogFile(filename[:-3] + 'log', level=logging.EXP)
+
 def write_trial(correct, resp, acc, rt, x_values, t_values):
     # check if file and folder already exist
-    dir = 'data'
     if not os.path.isdir(dir):
         os.makedirs(dir) #if this fails (e.g. permissions) you will get an error
-    filename = dir + os.path.sep + exp_name + '_' + '%s_%s' %(exp_info['id'], exp_info['date']) + '.csv' #generate file name with name of the experiment
-    logfile = logging.LogFile(filename + '.log', level=logging.EXP)
 
     # open file
     with open(filename, 'a') as save_file: #'a' = append; 'w' = writing; 'b' = in binary mode
-        file_writer = csv.writer(save_file, delimiter='\t') #generate file_writer object
+        file_writer = csv.writer(save_file, delimiter=',') #generate file_writer object # delimiter='\t'
         if os.stat(filename).st_size == 0: #if file is empty, insert header
-            file_writer.writerow(('timestamp', 'exp_name', 'id', 'gender', 'trial', 'correct', 'resp', 'acc', 'rt', 'x_values', 't_values'))
+            file_writer.writerow(('exp_name', 'id', 'gender', 'trial', 'correct', 'resp', 'acc', 'rt', 'x_values', 't_values', 'timestamp', ))
 
-        #write trial
-        file_writer.writerow(( get_timestamp(), exp_name, exp_info['id'], exp_info['gender'], trl, correct, resp, acc, rt, x_values, t_values))
+        # write trial
+        file_writer.writerow((exp_name, exp_info['id'], exp_info['gender'], trl, correct, resp, acc, rt, x_values, t_values, get_timestamp()))
 
 
 def get_timestamp(time="", format='%Y-%m-%d %H:%M:%S'): 
