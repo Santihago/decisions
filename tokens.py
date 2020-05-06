@@ -1,7 +1,8 @@
-from psychopy import core, visual, event
+from psychopy import core, visual, event, logging, gui, data
 import numpy as np
 import random
 from math import sqrt, ceil, sin
+import csv, datetime, glob, os
 
 """
 
@@ -19,12 +20,77 @@ from math import sqrt, ceil, sin
 # 1. GENERAL SETTINGS
 #=====================
 
+# 1.1
+
 win = visual.Window(units='pix', color='#1e1e1e')
 slow_speed = 60//5  #normal moving speed
 fast_speed = 60//20
 frames_per_token = slow_speed
 num_trials = 3
 num_tokens = 30 #set the number of *desired* tokens inside the main circle
+
+# 1.2 Experiment information
+
+exp_name = 'Decisions'
+
+#------------------------------
+# Experiment session GUI dialog
+#------------------------------
+
+#get values from dialog
+my_dlg = gui.Dlg(title=exp_name, pos = (860,340))
+my_dlg.addField(label='id',initial=0, tip='Participant name or code'),
+my_dlg.addField(label='age',initial=0, tip='Participant age'),
+my_dlg.addField(label='gender', choices=('female','male', 'Other/Prefer no to say'))
+my_dlg.addField(label='screen', choices=(60, 144), tip='Refresh Rate')
+my_dlg.addField(label='triggers', initial='No', choices=['Yes', 'No'], tip='Send EEG Triggers')
+dlg_data = my_dlg.show()
+if my_dlg.OK==False: core.quit()  #user pressed cancel
+
+#store values from dialog
+exp_info = {
+    'id':dlg_data[0],
+    'age':dlg_data[1],
+    'gender':dlg_data[2], 
+    'screen':dlg_data[3],
+    'triggers':dlg_data[4]
+    }
+
+exp_info['date']=data.getDateStr()  #get a simple timestamp for filename
+exp_info['exp_name']=exp_name
+
+#-----------------------
+#setup files for saving
+#-----------------------
+
+# 1.3 File saving
+"""Create functions to handle trial logging"""
+
+def write_trial(correct, resp, acc, rt, x_values, t_values):
+    # check if file and folder already exist
+    dir = 'data'
+    if not os.path.isdir(dir):
+        os.makedirs(dir) #if this fails (e.g. permissions) you will get an error
+    filename = dir + os.path.sep + exp_name + '_' + '%s_%s' %(exp_info['id'], exp_info['date']) + '.csv' #generate file name with name of the experiment
+    logfile = logging.LogFile(filename + '.log', level=logging.EXP)
+
+    # open file
+    with open(filename, 'a') as save_file: #'a' = append; 'w' = writing; 'b' = in binary mode
+        file_writer = csv.writer(save_file, delimiter='\t') #generate file_writer object
+        if os.stat(filename).st_size == 0: #if file is empty, insert header
+            file_writer.writerow(('timestamp', 'exp_name', 'id', 'gender', 'trial', 'correct', 'resp', 'acc', 'rt', 'x_values', 't_values'))
+
+        #write trial
+        file_writer.writerow(( get_timestamp(), exp_name, exp_info['id'], exp_info['gender'], trl, correct, resp, acc, rt, x_values, t_values))
+
+
+def get_timestamp(time="", format='%Y-%m-%d %H:%M:%S'): 
+    if time=="": return get_timestamp(core.getAbsTime(), format)
+    return datetime.datetime.fromtimestamp(time).strftime(format)
+
+# Logfile settings
+#logfile = logging.LogFile(filename + '.log', level=logging.EXP)
+#logging.console.setLevel(logging.WARNING)  #this outputs to the screen, not a file
 
 #=====================
 # 2. STIMULI CREATION
@@ -93,7 +159,7 @@ def clip(val, min_, max_):
 # PRELOADING ARRAYS
 #- - - - - - - - - -
 """Here I create all central token arrays with randomly jittered tokens.
-First define all positions and then create stimuli arrays."""
+I first define all positions and then create stimuli arrays."""
 
 # Create empty arrays beforehand
 stgs = []
@@ -307,7 +373,8 @@ for trl in range(num_trials):
         #===============
         # 5. FRAME LOOP
         #===============
-        """For each token, visual stimuli are updated each frame"""
+        """Each token is presented for multiple screen refreshes (frames)
+        Cursor and other visual stimuli are updated simultaneously"""
 
         for this_frame in range(frames_per_token):
             # 5.0 Detect whether this is the last token (for special case)
@@ -412,12 +479,14 @@ for trl in range(num_trials):
             # 5.7 Ask for manual input if trial ended
             if last_token and last_frame:
                 #save trial information
-                # trials.addData(trl_path)
-                # trials.addData(trl_times)
-                # correct/incorrect
+                write_trial(correct='l', 
+                            resp='sel_side_letter', 
+                            acc= 1 if 'l'=='sel_side_letter' else 0,
+                            rt=rt, 
+                            x_values=trl_path, 
+                            t_values=trl_times)
 
-
-                #requier manual input to continue
+                #require manual input to continue
                 keypress = event.waitKeys(keyList=['space', 'escape'])
 
             # 5.8 Continously allow to quit if escape is pressed
