@@ -1,19 +1,22 @@
 from psychopy import core, visual, event, logging, gui, data
 import numpy as np
-import random
 from math import sqrt, ceil, sin
+import random
 import csv, datetime, glob, os
 
 """
-
 # Author: Santiago Muñoz Moldes, University of Cambridge
 # Email: sm2115@cam.ac.uk
 # Start date: March 2020
 """
 
 """ 
-# TODO
-# - save stgs to log file (and add seed)
+TODO:
+- save stgs to log file (and add seed)
+- Sequences:
+-- if len(token_seq) =/ num_token throw warning or error
+-- save trial sequence and winning side to csv
+- preapre trial_order sampling from db a bit better in final exp
 """
 
 #=====================
@@ -23,15 +26,16 @@ import csv, datetime, glob, os
 # 1.1
 
 win = visual.Window(units='pix', color='#1e1e1e')
-slow_speed = 60//5  #normal moving speed
+normal_speed = 60//5  #normal moving speed
 fast_speed = 60//20
-frames_per_token = slow_speed
-num_trials = 3
-num_tokens = 30 #set the number of *desired* tokens inside the main circle
+frames_per_token = normal_speed
+num_trials = 4
+num_tokens = 15 #set the number of *desired* tokens inside the main circle
 
 # 1.2 Experiment information
 
-exp_name = 'Decisions'
+exp_name = 'Decisions'   # Experiment name
+exp_v    = 0.5           # Version
 
 #------------------------------
 # Experiment session GUI dialog
@@ -70,7 +74,7 @@ dir = 'data'
 filename = dir + os.path.sep + exp_name + '_' + '%s_%s' %(exp_info['id'], exp_info['date']) + '.csv' #generate file name with name of the experiment
 logfile = logging.LogFile(filename[:-3] + 'log', level=logging.EXP)
 
-def write_trial(correct, resp, acc, rt, x_values, t_values):
+def write_trial(correct, resp, acc, rt, velocity, path, times):
     # check if file and folder already exist
     if not os.path.isdir(dir):
         os.makedirs(dir) #if this fails (e.g. permissions) you will get an error
@@ -79,10 +83,10 @@ def write_trial(correct, resp, acc, rt, x_values, t_values):
     with open(filename, 'a') as save_file: #'a' = append; 'w' = writing; 'b' = in binary mode
         file_writer = csv.writer(save_file, delimiter=',') #generate file_writer object # delimiter='\t'
         if os.stat(filename).st_size == 0: #if file is empty, insert header
-            file_writer.writerow(('exp_name', 'id', 'gender', 'trial', 'correct', 'resp', 'acc', 'rt', 'x_values', 't_values', 'timestamp', ))
+            file_writer.writerow(('exp_name', 'version', 'hz', 'num_tokens', 'normal_speed', 'fast_speed', 'id', 'gender', 'trial', 'correct', 'resp', 'acc', 'rt', 'velocity', 'path', 'times', 'timestamp', ))
 
         # write trial
-        file_writer.writerow((exp_name, exp_info['id'], exp_info['gender'], trl, correct, resp, acc, rt, x_values, t_values, get_timestamp()))
+        file_writer.writerow((exp_name, exp_v, exp_info['screen'], num_tokens, normal_speed, fast_speed, exp_info['id'], exp_info['gender'], trl, correct, resp, acc, rt, velocity, path, times, get_timestamp()))
 
 
 def get_timestamp(time="", format='%Y-%m-%d %H:%M:%S'): 
@@ -92,6 +96,62 @@ def get_timestamp(time="", format='%Y-%m-%d %H:%M:%S'):
 # Logfile settings
 #logfile = logging.LogFile(filename + '.log', level=logging.EXP)
 #logging.console.setLevel(logging.WARNING)  #this outputs to the screen, not a file
+
+
+#====================
+# X. TOKEN SEQUENCES
+#====================
+
+# #Set L/R assignment for each token in this trial
+# #TODO: Extended this with trial difficulty, types, etc
+# token_sequence = ['l']*(len(xys)//2) + ['r']*(len(xys)//2)
+# token_sequence = random.sample(token_sequence, len(token_sequence))
+
+# X.1 Sequences database
+
+source = open('Sequence_Trials_Urge-Sel.txt', "r")
+#read all lines separately and remove the last two characters
+if source.mode == 'r': sequences = [line.rstrip('\n')[:-2] for line in source]
+#separate initial letter (left) from the numbers (right)
+all_seqs = list(zip([s[0] for s in sequences], [int(s[1:]) for s in sequences]))
+
+# Codes for types of trial
+# e = easy, a = ambiguous, m = misleading, x = random
+trial_types = 'e', 'a', 'm', 'x'
+
+# Dict : key = trial type letter | value: list of all sequences
+gathered_seqs = {}
+for trial_key in trial_types: 
+    gathered_seqs[trial_key] = [keyval[1] for keyval in all_seqs if keyval[0] == trial_key]
+
+# X.2 List of sequences for each trial
+# Sample from the dictionary the desired number of sequences of each trial type
+
+#TODO: Somehow define number of trials for each category, or order, etc.
+trial_order = trial_types  #NOTE:PROVISIONAL
+
+exp_sequences = []
+for i_trial in range(num_trials):
+    # Code for this trial
+    trial_type = trial_order[i_trial]
+    # Sample from all sequences corresponding to letter in the DB
+    # TODO: Do this outside of loop to avoid replacement
+    sel_token_seq_int = random.sample(gathered_seqs[trial_type], 1)
+    token_sequence_str = str(sel_token_seq_int[0]).replace('1', 'l')
+    token_sequence_str = token_sequence_str.replace('2', 'r')
+
+    # Which side wins (left : 1 or right : 2)
+    nr_left = token_sequence_str.count('l')
+    winning_side = 'l' if (nr_left > num_tokens-nr_left) else 'r'
+
+    # Add to
+    # exp_sequences += [{i_trial : {'trial_type'     : trial_type,
+    #                               'token_sequence' : sel_token_seq, 
+    #                               'winning_side'   : winning_side}}]
+
+    exp_sequences += [{'trial_type'     : trial_type,
+                       'token_sequence' : token_sequence_str, 
+                       'winning_side'   : winning_side}]
 
 #=====================
 # 2. STIMULI CREATION
@@ -168,6 +228,11 @@ stim = []
 
 for trl in range(num_trials):
 
+    # TOKEN SEQUENCE FOR THIS TRIAL
+    token_sequence = exp_sequences[trl]['token_sequence']
+
+    print(token_sequence)
+
     # SETTING UP COORDINATES FOR EACH TOKEN
     xys = [] #empty array of coordinates
     # Set the lowest and highest token ID on each side
@@ -190,11 +255,6 @@ for trl in range(num_trials):
     # NOTE: Not sure what the following does...:
     #tokens.size = (token_size[0] * side_tokens,
     #               token_size[1] * side_tokens)
-
-    #Set L/R assignment for each token in this trial
-    #TODO: Extended this with trial difficulty, types, etc
-    token_sequence = ['l']*(len(xys)//2) + ['r']*(len(xys)//2)
-    token_sequence = random.sample(token_sequence, len(token_sequence))
 
     # Reduce xys length to the initially desired number of tokens
     shortlist = random.sample(range(len(xys)), num_tokens)
@@ -308,6 +368,7 @@ pretrl_stims += [visual.TextStim(win,
             text=u"Bring mouse to bottom shape to start", 
             height=txt_size, pos = [0, title_pos], color = whitish)]
 
+
 #===============
 # 3. TRIAL LOOP
 #===============
@@ -315,12 +376,13 @@ pretrl_stims += [visual.TextStim(win,
 for trl in range(num_trials):
 
     # 3.1 Reset some values at each trial
-    trl_path  = []  #continuous rating vector: tuples for pos, and time (variable length each trial)
+    trl_path  = []  #tuples for x,y pos (variable length each trial)
     trl_times = []  #timestamp for each recorded position
+    trl_velocity = []  #velocity values calculated each time point
     for side in 0, 2: 
         circles[side].setLineColor(line_color)  #reset colors
         circles[side].setLineWidth(line_width)  #reset line width
-
+    frames_per_token = normal_speed
     moving = True  #mouse
     show_shadow = True
     show_cursor = True
@@ -328,8 +390,6 @@ for trl in range(num_trials):
     responded = False
     last_token = False
     last_frame = False
-    frames_per_token = slow_speed
-    #mouse.setPos([0, cursor_start_y_pos])
     mouse.clickReset()
     lower_bound = draw_area_coord[0]  #restart the value each trial
 
@@ -338,6 +398,8 @@ for trl in range(num_trials):
 
     # 3.2 Set some trial information
     correct_side = 'l' #TODO: change to get from sequences
+
+    # Set sequence
 
     # 3.3 Draw on screen pre-trial stimuli until mouse reaches start position
     while not pretrl_stims[0].contains(mouse):  # [] indexes the target shape
@@ -365,6 +427,7 @@ for trl in range(num_trials):
     """Mouse is on position, start moving tokens!"""
 
     event.Mouse(visible=False)  #make mouse disappear
+    #mouse.setPos([0, cursor_start_y_pos])
     timer.reset()  #restart the trial timer
     for this_token in range(num_tokens):
         #detect whether this is the last token for special case
@@ -398,15 +461,16 @@ for trl in range(num_trials):
             m_x, m_y = mouse.getPos()
             #5.2.2 Store mouse position
             trl_path.append((m_x, m_y))  # record current mouse positions
-            trl_times.append(round(timer.getTime(), 2))  # record time of mouse position
+            trl_times.append(round(timer.getTime(), 4))  # record time of mouse position
 
             #5.2.3 Calculate mouse velocity
             #distance between last and previous recorded coordiantes (between two frames)
             # time in frames for the duration of the travel
             if len(trl_path) > t_in_frames:  # start measuring after a time minimum
-                m_velocity = sqrt((trl_path[-1][0] - trl_path[-t_in_frames][0])**2 + 
+                velocity = sqrt((trl_path[-1][0] - trl_path[-t_in_frames][0])**2 + 
                                   (trl_path[-1][1] - trl_path[-t_in_frames][1])**2)
-                if m_velocity > 0:
+                velocity = round(velocity, 3)
+                if velocity > 0:
                     moving = True
                     #cursor.setFillColor('white')
                     area.setFillColor(whitish)
@@ -414,6 +478,9 @@ for trl in range(num_trials):
                     moving = False
                     #cursor.setFillColor('red')
                     area.setFillColor(redish)
+            else: velocity = 'NA'
+
+            trl_velocity.append(velocity)  # record velocity values
 
             #5.2.4 Prepare cursor visualisation
 
@@ -481,11 +548,12 @@ for trl in range(num_trials):
             if last_token and last_frame:
                 #save trial information
                 write_trial(correct='l', 
-                            resp='sel_side_letter', 
-                            acc= 1 if 'l'=='sel_side_letter' else 0,
-                            rt=rt, 
-                            x_values=trl_path, 
-                            t_values=trl_times)
+                            resp=sel_side_letter, 
+                            acc= 1 if sel_side_letter==correct_side else 0,
+                            rt=rt,
+                            velocity=trl_velocity, 
+                            path=trl_path, 
+                            times=trl_times)
 
                 #require manual input to continue
                 keypress = event.waitKeys(keyList=['space', 'escape'])
