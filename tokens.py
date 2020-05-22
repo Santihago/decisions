@@ -14,9 +14,9 @@ import csv, datetime, glob, os
 TODO:
 - save stgs to log file (and add seed)
 - Sequences:
--- if len(token_seq) =/ num_token throw warning or error
--- save trial sequence and winning side to csv
-- preapre trial_order sampling from db a bit better in final exp
+--- if len(token_seq) =/ num_token throw warning or error
+--- save trial sequence and winning side to csv
+--- prepare trial_order sampling from db a bit better in final exp
 """
 
 #=====================
@@ -230,8 +230,6 @@ for trl in range(num_trials):
 
     # TOKEN SEQUENCE FOR THIS TRIAL
     token_sequence = exp_sequences[trl]['token_sequence']
-
-    print(token_sequence)
 
     # SETTING UP COORDINATES FOR EACH TOKEN
     xys = [] #empty array of coordinates
