@@ -1,4 +1,5 @@
 from math import floor, factorial
+import random
 
 
 def get_quantities(sequence, length = None, end = None, digits=True):
@@ -141,90 +142,132 @@ def get_ranges(extended_template):  #type='easy'
     return ranges
 
 
-# def adjust_min_max(ranges):
-# """A minimum cannot be lower than a previous minimum.
-# A maximum cannot be lower than a previous maximum."""
+def look_right(i, ranges):
+    for next_index in range(i, len(ranges)):
+        if ranges[next_index] is tuple():
+            continue
+        else:
+            right_min = ranges[next_index][0]
+            right_max = ranges[next_index][1]
+            break
+    return next_index, right_min, right_max
 
-#     for i, x in enumerate(ranges):
+def look_left(i, filled_ranges):
 
-#         latest_valid_idx = []
+    left_min = filled_ranges[i-1][0]
+    left_max = filled_ranges[i-1][1]
 
-#         if x == tuple(): # If empty
-#             continue
-        
-#         else:
-#             idx = i  #latest index of non-empty item
-#             if i == 0: #no adjustment needed for first item
-#                 continue
-#             elif i>0:
-#                 previous_min = ranges[idx][0]
-#                 previous_max = ranges[idx][1]
-
-#                 #min: a min[i] cannot be lower than previous minima
-#                 #max: a max[i] cannot be higher than previous maxima
-#                 new_min = previous_min if (previous_min > x[0]) else x[0]
-#                 new_max = previous_max if (previous_max < x[1]) else x[1]
-
-#                 # Change the range value if necessary
-#                 ranges[i] = (new_min, new_max)
-
-#         return ranges 
+    return left_min, left_max
 
 
-# def fillin_template(ranges):
+def fill_in(ranges):
+    """1) A given minimum cannot be lower than a previous minimum.
+    We set all unknown item's minima to the previous known minimum.
+    2) An unknown maximum cannot be more than +1 of a previous known maximum.
+    We set all unknown maxima to +1 of the previous known maximum."""
 
-#     filled_template = []
+    filled_ranges = []
 
-#     for i, x in enumerate(ranges):
+    for i, x in enumerate(ranges):
 
-#         latest_valid_idx = []
-        
-#         if x is tuple():  #empty
+        found_left = False
+        found_right = False
 
-#             if i==0:
-#                 # Random side selection
-#                 # 1 or 0
-#                 NR = random.int(0, 1, 1)
-#             else:
-#                 # Take min and max from previous range
+        if x:  #continue until finding empty slot
 
-#         elif x is not tuple():
+            filled_ranges += [x]
 
-#             idx = i  #latest index of non-empty item
+        if x is tuple():  # if empty
 
-#             # Take min and max from range
-#             # Take into account previous item for the min and max
-            
-#             previous_min = ranges[idx][0]
-#             previous_max = ranges[idx][1]
+            try: 
+                left_min, left_max = look_left(i, filled_ranges)
+                found_left = True
+            except: 
+                pass
+            try:
+                next_index, right_min, right_max = look_right(i, ranges)
+                found_right = True
+            except: 
+                pass
 
-#             # Merge
-#             new_min = previous_min if (previous_min > x[0]) else x[0]
-#             new_max = previous_max if (previous_max < x[1]) else x[1]
+            if not found_left and found_right:
+                new_min = right_min - (next_index-i)  #  bc only 1 jump per timepoint allowed
+                new_max = right_max  # cannot be more than the following max
 
-#             # If equal values, then no question
-#             if new_min == new_max:
-#                 NR = new_min
-#             # If range, then sample a value between the two
-#             elif new_min is not new_max:
-#                 NR = random.int(new_min, new_max, 1)
+            elif found_left and not found_right:
+                new_min = left_min
+                new_max = left_max + 1
 
-#             completed_template[i] = 
+            elif found_left and found_right:
 
-#         return complete_template
+                # Find new_min 
+                # Take the highest value between
+                val_1 = left_min  #at least the previous min
+                val_2 = right_min-(next_index-i)  #  only 1 jump per timepoint allowed
+                new_min = max(val_1, val_2)  #take highest value
 
-# def make_sequence(complete_template):
+                # Find new_max 
+                # Take the highest value between
+                val_3 = left_max + 1  # maximum +1 from previous maximum
+                val_4 = right_max  # cannot be more than the following max
+                new_max = min(val_3, val_4)  #take highest value
 
-#     # Starting from the complete_template, we haveNC and the NR
+            filled_ranges += [(new_min, new_max)]
 
-#     # Find NL for each timepoint
-
-#     # Translate into 212121 or lrlrlrl
+    return filled_ranges
 
 
-# def exp_sequence_maker():
+def make_NR_sequence(filled_ranges):
 
-#     # Given predefined
+    sequence = []
+
+    for i, x in enumerate(filled_ranges):
+
+        if x[0] == x[1]:
+            value = x[0]
+        else:
+            if i is 0:
+                value = random.randint(0, 1)
+
+            if i is not 0:
+                previous_value = sequence[i-1]
+                #If previous_value is lower than the current minimum, mandatory to add 1
+                if previous_value == (x[0] - 1):
+                    value = previous_value + 1
+                # If previous value is within the current range, then it's random
+                elif previous_value in range(x[0], x[1]):
+                    # Coin toss 
+                    value = previous_value + random.randint(0, 1)
+
+        sequence += [value] 
+
+    return sequence
+
+
+def make_sequence(sequence):
+    """Given a sequence with the number of NR, create a sequence indicating
+    whether a token goes left or right (e.g. 21212121)."""
+
+    text_sequence = ''
+    counter = 0
+
+    for i, x in enumerate(sequence):
+
+        NC = len(sequence) - (i+1)
+        NL = len(sequence) - (NC+x)
+
+        if i is 0 and x is 1:
+            text_sequence += '2'
+        elif i is 0 and x is not 1:
+            text_sequence += '1'
+
+        if i>0:
+            if sequence[i-1]+1 == x:
+                text_sequence += '2'
+            elif sequence[i-1] == x:
+                text_sequence += '1'
+
+    return text_sequence
 
 
 #----------
@@ -232,7 +275,7 @@ def get_ranges(extended_template):  #type='easy'
 
 # sequence for example (almost all tokens go to right, so P(R) increases steadily)
 sequence = '222221211222212'  #sequence of tokens, going left (1) or right (2)
-num_tokens = 8  #total number of tokens
+num_tokens = 15  #total number of tokens
 
 #example
 template = [(.6, 1),  (), (.7, 1), (), (.8, 1), (), (), (), (), (.8, 1), (), (), (.9, 1), (), ()]  # all >=
@@ -242,11 +285,21 @@ template = [(.6, 1),  (), (.7, 1), (), (.8, 1), (), (), (), (), (.8, 1), (), (),
 # misl = [],  <.3,  <.4, <.5, [], [], [], [], [], >.5, [], [], [], .75, [], []  # 
 
 
-extended_template = get_extended_template(template, new_length = 8)
+extended_template = get_extended_template(template, new_length=num_tokens)
 ranges = get_ranges(extended_template)
 print(ranges)
-adjusted_ranges = adjust_min_max(ranges)
-print(adjusted_ranges)
+# adjusted_ranges = adjust_min_max(ranges)
+# print(adjusted_ranges)
+
+filled_ranges = fill_in(ranges)
+print(filled_ranges)
+
+comp = make_NR_sequence(filled_ranges)
+print(comp)
+
+text = make_sequence(comp)
+print(text)
+
 
 #TODO:
 # FIll-in sequences
