@@ -275,6 +275,7 @@ def make_sequence(sequence):
 
 # sequence for example (almost all tokens go to right, so P(R) increases steadily)
 sequence = '222221211222212'  #sequence of tokens, going left (1) or right (2)
+
 num_tokens = 15  #total number of tokens
 
 #example
@@ -288,8 +289,6 @@ template = [(.6, 1),  (), (.7, 1), (), (.8, 1), (), (), (), (), (.8, 1), (), (),
 extended_template = get_extended_template(template, new_length=num_tokens)
 ranges = get_ranges(extended_template)
 print(ranges)
-# adjusted_ranges = adjust_min_max(ranges)
-# print(adjusted_ranges)
 
 filled_ranges = fill_in(ranges)
 print(filled_ranges)
@@ -299,7 +298,3 @@ print(comp)
 
 text = make_sequence(comp)
 print(text)
-
-
-#TODO:
-# FIll-in sequences
