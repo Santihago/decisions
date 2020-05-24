@@ -1,6 +1,7 @@
 from math import floor, factorial
 import random
 
+#TODO: in get_NL round the p? so that 0.49999999 is not rejected as not being 0.5
 
 def get_quantities(sequence, length = None, end = None, digits=True):
     """Sequence example: '222221211222212' or 'rrrrrlrllrrrrrlr """
@@ -100,10 +101,14 @@ def get_NL(num_tokens, NC, prob_min, prob_max):
 
     accepted_NL_values = []
 
+    print('New function use.')
+
     # Loop for different values of NL to find those that work
     for possible_NL in range(num_tokens):
 
         p_r = get_prob(NC, possible_NL, num_tokens)
+
+        print('P:' + str(p_r))
 
         if p_r >= prob_min and p_r <= prob_max:
             accepted_NL_values += [possible_NL]
@@ -153,7 +158,6 @@ def look_right(i, ranges):
     return next_index, right_min, right_max
 
 def look_left(i, filled_ranges):
-
     left_min = filled_ranges[i-1][0]
     left_max = filled_ranges[i-1][1]
 
@@ -169,16 +173,12 @@ def fill_in(ranges):
     filled_ranges = []
 
     for i, x in enumerate(ranges):
-
         found_left = False
         found_right = False
-
         if x:  #continue until finding empty slot
-
             filled_ranges += [x]
 
         if x is tuple():  # if empty
-
             try: 
                 left_min, left_max = look_left(i, filled_ranges)
                 found_left = True
@@ -193,13 +193,10 @@ def fill_in(ranges):
             if not found_left and found_right:
                 new_min = right_min - (next_index-i)  #  bc only 1 jump per timepoint allowed
                 new_max = right_max  # cannot be more than the following max
-
             elif found_left and not found_right:
                 new_min = left_min
                 new_max = left_max + 1
-
             elif found_left and found_right:
-
                 # Find new_min 
                 # Take the highest value between
                 val_1 = left_min  #at least the previous min
@@ -211,24 +208,19 @@ def fill_in(ranges):
                 val_3 = left_max + 1  # maximum +1 from previous maximum
                 val_4 = right_max  # cannot be more than the following max
                 new_max = min(val_3, val_4)  #take highest value
-
             filled_ranges += [(new_min, new_max)]
-
     return filled_ranges
 
 
 def make_NR_sequence(filled_ranges):
 
     sequence = []
-
     for i, x in enumerate(filled_ranges):
-
         if x[0] == x[1]:
             value = x[0]
         else:
             if i is 0:
                 value = random.randint(0, 1)
-
             if i is not 0:
                 previous_value = sequence[i-1]
                 #If previous_value is lower than the current minimum, mandatory to add 1
@@ -240,7 +232,6 @@ def make_NR_sequence(filled_ranges):
                     value = previous_value + random.randint(0, 1)
 
         sequence += [value] 
-
     return sequence
 
 
@@ -250,12 +241,9 @@ def make_sequence(sequence, format='letter'):
 
     text_sequence = ''
     counter = 0
-
     for i, x in enumerate(sequence):
-
         NC = len(sequence) - (i+1)
         NL = len(sequence) - (NC+x)
-
         if i is 0 and x is 1:
             text_sequence += '2'
         elif i is 0 and x is not 1:
@@ -348,7 +336,7 @@ def experiment_sequences(templates, num_tokens, nr_per_type, nr_random=0,
     if nr_random > 0:
         for i in range(nr_random):
             # Add (random) key to list with all trials
-            trial_keys += [random.sample(templates.keys(),1)]
+            trial_keys += random.sample(templates.keys(),1)
 
     
     # For the whole experiment, set 1/2 trials to Left-winning, and 1/2 to Right-winning
@@ -395,7 +383,7 @@ nr_per_type = 3
 nr_random = 3
 templates = {
     'e' : [(.6,1),  (), (.7,1), (), (.8,1), (), (), (), (), (.8,1), (), (), (.9,1), (), ()],
-   # 'a' : [(),  (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (0,.66), (.5,1), (.65,1), (.5,1), (.75,1), (), ()],
+    'a' : [(),  (.49,.51), (.55,.65), (.49,.51), (.55,.65), (.49,.51), (.55,.65), (.49,.51), (0,.66), (.49,1), (.65,1), (.49,1), (.75,1), (), ()],
     'm' : [(),  (0,.3),  (0,.4), (0,.5), (), (), (), (), (), (.5,1), (), (), (), (.75,1), (), ()] 
     }
 
