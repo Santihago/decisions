@@ -244,7 +244,7 @@ def make_NR_sequence(filled_ranges):
     return sequence
 
 
-def make_sequence(sequence):
+def make_sequence(sequence, format='letter'):
     """Given a sequence with the number of NR, create a sequence indicating
     whether a token goes left or right (e.g. 21212121)."""
 
@@ -267,34 +267,140 @@ def make_sequence(sequence):
             elif sequence[i-1] == x:
                 text_sequence += '1'
 
+    if format=='letter':
+        pass
+    elif format=='digit':
+        text_sequence = alpha_digit_switch(text_sequence)
+
     return text_sequence
 
 
-#----------
+def alpha_digit_switch(text_sequence):
+
+    # Check if digits or letters
+    if text_sequence.isdigit(): 
+        switched_sequence = text_sequence.replace('1', 'l')
+        switched_sequence = text_sequence.replace('2', 'r')
+        new_format = 'letter'
+
+    elif text_sequence.isalpha():
+        switched_sequence  = text_sequence.replace('l', '1')
+        switched_sequence  = text_sequence.replace('r', '2')
+        new_format = 'digit'
+
+    return reversed_sequence, new_format
 
 
-# sequence for example (almost all tokens go to right, so P(R) increases steadily)
-sequence = '222221211222212'  #sequence of tokens, going left (1) or right (2)
+def winning_side(text_sequence):
 
-num_tokens = 15  #total number of tokens
+    if text_sequence.isdigit(): 
+        code_left = '1'
+        code_right = '2'
+    elif text_sequence.isalpha():
+        code_left = 'l'
+        code_right = 'r'
 
-#example
-template = [(.6, 1),  (), (.7, 1), (), (.8, 1), (), (), (), (), (.8, 1), (), (), (.9, 1), (), ()]  # all >=
-# ambi = [],  .5, .55-0.65, .5, .55-0.65, .5, .55-0.65, .5, <.6, >.5, .65, >.5, .75, [], []  # 
+    nr_left = token_sequence_str.count(code_left)
+    winning_side = code_left if (nr_left > len(text_sequence)-nr_left) else code_right
 
-# i    =  1,    2,    3,  4,  5,  6,  7,  8,  9,   10, 11, 12, 13,  14, 15
-# misl = [],  <.3,  <.4, <.5, [], [], [], [], [], >.5, [], [], [], .75, [], []  # 
+    return winning_side
+
+def replace_all(text_sequence, dic):
+    for i, j in dic.iteritems():
+        text_sequence = text_sequence.replace(i, j)
+    return text_sequence
+
+def left_right_switch(text_sequence):
+
+    # Check if digits or letters
+    if text_sequence.isdigit(): 
+        codes = [ ['1', '1-'], ['2', '1'], ['1-', '2']]  # 3 steps with placeholder as a little hack
+
+    elif text_sequence.isalpha():
+        codes = [ ['l', 'l-'], ['r', 'l'], ['l-', 'r']]
+
+    for x,y in (codes): 
+        text_sequence = text_sequence.replace(x, y)
+
+    return text_sequence 
 
 
-extended_template = get_extended_template(template, new_length=num_tokens)
-ranges = get_ranges(extended_template)
-print(ranges)
+def experiment_sequences(templates, num_tokens, nr_per_type, nr_random=0, 
+    randomisation='random', format='letter'):
 
-filled_ranges = fill_in(ranges)
-print(filled_ranges)
+    #Input: dict with label and template
 
-comp = make_NR_sequence(filled_ranges)
-print(comp)
+    # templates = {
+    # 'e' : [(.6,1),  (), (.7,1), (), (.8,1), (), (), (), (), (.8,1), (), (), (.9,1), (), ()],
+    # 'a' : [(),  (.5,1), (.55,.65), (.5,1), (.55,.65), (.5,1), (.55,.65), (.5,1), (0,.6), (.5,1), (.65,1), (.5,1), (.75,1), (), ()]
+    # 'm' : [(),  (0,.3),  (0,.4), (0,.5), (), (), (), (), (), (.5,1), (), (), (), (.75,1), (), ()] 
+    # }
 
-text = make_sequence(comp)
-print(text)
+    exp_sequences = []
+    trial_keys = []
+
+    for trial_type in templates:
+        for i in range(nr_per_type):
+            # Add key to list with all trials
+            trial_keys += [trial_type]
+
+    # Add random sequences
+    if nr_random > 0:
+        for i in range(nr_random):
+            # Add (random) key to list with all trials
+            trial_keys += [random.sample(templates.keys(),1)]
+
+    
+    # For the whole experiment, set 1/2 trials to Left-winning, and 1/2 to Right-winning
+    nr_l = round(len(trial_keys)/ 2)
+    nr_r = len(trial_keys) - nr_l
+    exp_winning_side = random.sample(['l'] * nr_l + ['r'] * nr_r, len(trial_keys))
+
+    # For each key:template transform into the corresponding sequence
+    for i, x in enumerate(trial_keys):
+
+        template = templates[x[0]]
+
+        # 1. Extend if necessary
+        extended_template = get_extended_template(template, new_length=num_tokens)
+        # 2. From template calculate plausible ranges
+        ranges = get_ranges(extended_template)
+        # 3. Fill in empty information with what we know from ranges
+        filled_ranges = fill_in(ranges)
+        # 4. Create a sequences of right tokens
+        nr_sequence = make_NR_sequence(filled_ranges)
+        # 5. Create a text sequence in the format expected
+        final_sequence = make_sequence(nr_sequence, format=format)
+        # 6. Change to winning side
+
+        # By default all sequences are made with 2 or 'r' winning.
+        #If 'r', no change. If 'l', use function to invert.
+        if exp_winning_side[i] == 'l':
+            final_sequence = left_right_switch(final_sequence)
+
+        # 7. Add to an experimental structure
+
+        exp_sequences += [{'trial_type'     : x,
+                           'token_sequence' : final_sequence, 
+                           'winning_side'   : exp_winning_side[i]}]
+
+    # Re-order according to need
+    if randomisation == 'random':
+        exp_sequences[:] = random.sample(exp_sequences, len(exp_sequences))
+
+    return exp_sequences
+#---------
+num_tokens = 15
+nr_per_type = 3
+nr_random = 3
+templates = {
+    'e' : [(.6,1),  (), (.7,1), (), (.8,1), (), (), (), (), (.8,1), (), (), (.9,1), (), ()],
+   # 'a' : [(),  (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (0,.66), (.5,1), (.65,1), (.5,1), (.75,1), (), ()],
+    'm' : [(),  (0,.3),  (0,.4), (0,.5), (), (), (), (), (), (.5,1), (), (), (), (.75,1), (), ()] 
+    }
+
+exp_sequences = experiment_sequences(templates, num_tokens=num_tokens, 
+    nr_per_type=nr_per_type, nr_random=nr_random, randomisation='random', 
+    format='letter')
+
+print(exp_sequences)
