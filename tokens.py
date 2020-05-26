@@ -3,6 +3,8 @@ import numpy as np
 from math import sqrt, ceil, sin
 import random
 import csv, datetime, glob, os
+from tokentools import *
+from visualtools import *
 
 """
 # Author: Santiago Muñoz Moldes, University of Cambridge
@@ -16,7 +18,7 @@ TODO:
 - Sequences:
 --- if len(token_seq) =/ num_token throw warning or error
 --- save trial sequence and winning side to csv
---- prepare trial_order sampling from db a bit better in final exp
+- 1.4 constant overshoots heavily for big numbers, find better way
 """
 
 #=====================
@@ -26,11 +28,9 @@ TODO:
 # 1.1
 
 win = visual.Window(units='pix', color='#1e1e1e')
-normal_speed = 60//5  #normal moving speed
+normal_speed = 120//5  #normal moving speed
 fast_speed = 60//20
 frames_per_token = normal_speed
-num_trials = 4
-num_tokens = 15 #set the number of *desired* tokens inside the main circle
 
 # 1.2 Experiment information
 
@@ -97,61 +97,23 @@ def get_timestamp(time="", format='%Y-%m-%d %H:%M:%S'):
 #logfile = logging.LogFile(filename + '.log', level=logging.EXP)
 #logging.console.setLevel(logging.WARNING)  #this outputs to the screen, not a file
 
-
 #====================
 # X. TOKEN SEQUENCES
 #====================
 
-# #Set L/R assignment for each token in this trial
-# #TODO: Extended this with trial difficulty, types, etc
-# token_sequence = ['l']*(len(xys)//2) + ['r']*(len(xys)//2)
-# token_sequence = random.sample(token_sequence, len(token_sequence))
+num_tokens = 25 #set the number of *desired* tokens inside the main circle
+nr_per_type = 3
+nr_random = 3
+templates = {
+    'e' : [(.6,1),  (), (.7,1), (), (.8,1), (), (), (), (), (.8,1), (), (), (.9,1), (), ()],
+    'a' : [(),  (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (0,.66), (.5,1), (.65,1), (.5,1), (.75,1), (), ()],
+    'm' : [(),  (0,.3),  (0,.4), (0,.5), (), (), (), (), (), (.5,1), (), (), (), (.75,1), (), ()] 
+    }
+exp_sequences = experiment_sequences(templates, num_tokens=num_tokens, 
+    nr_per_type=nr_per_type, nr_random=nr_random, randomisation='random', 
+    format_to='letter')
 
-# X.1 Sequences database
-
-source = open('Sequence_Trials_Urge-Sel.txt', "r")
-#read all lines separately and remove the last two characters
-if source.mode == 'r': sequences = [line.rstrip('\n')[:-2] for line in source]
-#separate initial letter (left) from the numbers (right)
-all_seqs = list(zip([s[0] for s in sequences], [int(s[1:]) for s in sequences]))
-
-# Codes for types of trial
-# e = easy, a = ambiguous, m = misleading, x = random
-trial_types = 'e', 'a', 'm', 'x'
-
-# Dict : key = trial type letter | value: list of all sequences
-gathered_seqs = {}
-for trial_key in trial_types: 
-    gathered_seqs[trial_key] = [keyval[1] for keyval in all_seqs if keyval[0] == trial_key]
-
-# X.2 List of sequences for each trial
-# Sample from the dictionary the desired number of sequences of each trial type
-
-#TODO: Somehow define number of trials for each category, or order, etc.
-trial_order = trial_types  #NOTE:PROVISIONAL
-
-exp_sequences = []
-for i_trial in range(num_trials):
-    # Code for this trial
-    trial_type = trial_order[i_trial]
-    # Sample from all sequences corresponding to letter in the DB
-    # TODO: Do this outside of loop to avoid replacement
-    sel_token_seq_int = random.sample(gathered_seqs[trial_type], 1)
-    token_sequence_str = str(sel_token_seq_int[0]).replace('1', 'l')
-    token_sequence_str = token_sequence_str.replace('2', 'r')
-
-    # Which side wins (left : 1 or right : 2)
-    nr_left = token_sequence_str.count('l')
-    winning_side = 'l' if (nr_left > num_tokens-nr_left) else 'r'
-
-    # Add to
-    # exp_sequences += [{i_trial : {'trial_type'     : trial_type,
-    #                               'token_sequence' : sel_token_seq, 
-    #                               'winning_side'   : winning_side}}]
-
-    exp_sequences += [{'trial_type'     : trial_type,
-                       'token_sequence' : token_sequence_str, 
-                       'winning_side'   : winning_side}]
+num_trials = nr_per_type*len(templates) + nr_random
 
 #=====================
 # 2. STIMULI CREATION
@@ -193,13 +155,12 @@ it will provide a grid that overshoot the `num_tokens` number slightly
 (those extra tokens can be remove later)"""
 alt_grid_side = ceil(sqrt(num_tokens))
 grid_side = alt_grid_side*2
-side_tokens = ceil(grid_side*1.3) #constant is abritrary (NOTE: got 1 error with n=15 now)
+side_tokens = ceil(grid_side*1.4) #constant is abritrary (NOTE: got 1 error with n=15 now)
 #set the size of a token
 token_size = [circle_size / side_tokens, circle_size / side_tokens]
 #set where the grid is positioned
 location = [0, c_y_pos]
 loc = np.array(location) + np.array(token_size) // 2
-
 
 def make_tokens(xys, indices, pos):
     """Creates an elementArrayStim based on given parameters"""
@@ -226,29 +187,17 @@ I first define all positions and then create stimuli arrays."""
 stgs = []
 stim = []
 
+print(exp_sequences)
+
 for trl in range(num_trials):
 
     # TOKEN SEQUENCE FOR THIS TRIAL
     token_sequence = exp_sequences[trl]['token_sequence']
 
-    # SETTING UP COORDINATES FOR EACH TOKEN
-    xys = [] #empty array of coordinates
-    # Set the lowest and highest token ID on each side
-    low, high = side_tokens // -2, side_tokens // 2
-    # Populate xys
-    for y in range(low, high, 2):  #by steps of 2 to remove alternate lines
-        for x in range(low, high, 2):
-            x_pos = token_size[0] * x
-            y_pos = token_size[1] * y
-            # ADD JITTER
-            x_pos = x_pos + np.random.uniform(-token_size[0]/2, token_size[0]/2)
-            y_pos = y_pos + np.random.uniform(-token_size[0]/2, token_size[1]/2)
-            # REMOVE OUT OF CIRCLE ELEMENTS
-            #for a given x_pos, we find a max y_pos that remains within the circle using Pythagora's theorem
-            try: max_y_pos = sqrt((circle_radius-(token_size[0]))**2 - x_pos**2)
-            except: max_y_pos = 0  #to avoid error with sqrt(0)
-            if (y_pos+loc[0]) > max_y_pos or (y_pos+loc[0]) < -max_y_pos : continue
-            else: xys.append((x_pos, y_pos))
+    # CREATE COORDINATES
+    xys = create_coordinates(loc, side_tokens, circle_radius, token_size)
+
+    print(len(xys))
 
     # NOTE: Not sure what the following does...:
     #tokens.size = (token_size[0] * side_tokens,
@@ -256,6 +205,7 @@ for trl in range(num_trials):
 
     # Reduce xys length to the initially desired number of tokens
     shortlist = random.sample(range(len(xys)), num_tokens)
+
     xys = [xys[i] for i in shortlist]
 
     # SETTINGS
@@ -343,15 +293,21 @@ for i in range(shadow_length):
 
 draw_area_coord = (cursor_start_y_pos, location[1]-circle_radius)  # top, bottom
 draw_rect_height = abs(abs(draw_area_coord[1]) - draw_area_coord[0])  # top - bottom
-draw_rect_x = 0
+draw_rect_x = 0 #-(c_offset+circle_size)  #on the left side
 draw_rect_y = draw_area_coord[1] - draw_rect_height/2
+#make small
+
 #we calulate vertical step that is added each frame
 y_step = draw_rect_height/(num_tokens*frames_per_token)
 #stimuli list for drawing area
-area = visual.Rect(win, width=500, height=draw_rect_height, 
+area = visual.Rect(win, width=3, height=draw_rect_height, 
                     fillColor = whitish, lineColor = whitish, 
                     pos = (draw_rect_x, draw_rect_y),
                     opacity = .75)
+# curtain = visual.Rect(win, width=(c_offset+circle_radius)*2-10, height=draw_rect_height, 
+#                     fillColor = blackish, lineColor = blackish, 
+#                     pos = (draw_rect_x, draw_rect_y),
+#                     opacity = 1)
 
 #- - - - - - - - - - -
 # Static text and other
@@ -395,7 +351,7 @@ for trl in range(num_trials):
     timer = core.Clock()  #start a trial timer
 
     # 3.2 Set some trial information
-    correct_side = 'l' #TODO: change to get from sequences
+    correct_side = exp_sequences[trl]['winning_side']
 
     # Set sequence
 
@@ -545,9 +501,9 @@ for trl in range(num_trials):
             # 5.7 Ask for manual input if trial ended
             if last_token and last_frame:
                 #save trial information
-                write_trial(correct='l', 
+                write_trial(correct=correct_side, 
                             resp=sel_side_letter, 
-                            acc= 1 if sel_side_letter==correct_side else 0,
+                            acc=1 if sel_side_letter==correct_side else 0,
                             rt=rt,
                             velocity=trl_velocity, 
                             path=trl_path, 
