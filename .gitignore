@@ -4,3 +4,5 @@
 /data/
 .vscode
 Sequence_Trials_Urge-Sel.txt
+__pycache__
+script notes.md

@@ -15,9 +15,6 @@ from visualtools import *
 """ 
 TODO:
 - save stgs to log file (and add seed)
-- Sequences:
---- if len(token_seq) =/ num_token throw warning or error
---- save trial sequence and winning side to csv
 - 1.4 constant overshoots heavily for big numbers, find better way
 """
 
