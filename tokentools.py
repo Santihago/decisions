@@ -171,7 +171,6 @@ def get_ranges(extended_template):
             NR_max = num_tokens - (NC + NL_min) 
             #Save tuple in vector
             ranges += [(NR_min, NR_max)]
-    print(ranges)
     return ranges
 
 
@@ -323,13 +322,13 @@ def winning_side(text_sequence):
     :params str text_sequence: a sequence in text format (can be letters or digits)
     """
 
-    if text_sequence.isdigit(): 
+    if letters_or_digits(text_sequence)=='digits': 
         code_left = '1'
         code_right = '2'
-    elif text_sequence.isalpha():
+    else:
         code_left = 'l'
         code_right = 'r'
-    nr_left = token_sequence_str.count(code_left)
+    nr_left = text_sequence.count(code_left)
     winning_side = code_left if (nr_left > len(text_sequence)-nr_left) else code_right
     return winning_side
 
@@ -340,10 +339,9 @@ def left_right_switch(text_sequence):
     """
     codes=[]
     # Check if digits or letters
-    if text_sequence.isdigit(): 
+    if letters_or_digits(text_sequence)=='digits': 
         codes = [['1', '_'], ['2', '1'], ['_', '2']]  # 3 steps with placeholder as a little hack
-
-    elif text_sequence.isalpha():
+    else:
         codes = [['l', '_'], ['r', 'l'], ['_', 'r']]
 
     for x,y in (codes): 
@@ -400,14 +398,13 @@ def experiment_sequences(templates, num_tokens, nr_per_type, nr_random=0,
         # 5. Create a text sequence in the format expected
         text_sequence = make_sequence(nr_sequence, format_to=format)
         # 6. Change to winning side
-        # By default all sequences are made with 2 or 'r' winning.
-        #If 'r', no change. If 'l', use function to invert.
+        # By default all sequences are made with Right side winning.
         if exp_winning_side[i] == 'l':
             text_sequence = left_right_switch(text_sequence)
         # 7. Add to an experimental structure
         exp_sequences += [{'trial_type'     : x,
                            'token_sequence' : text_sequence, 
-                           'winning_side'   : exp_winning_side[i]}]
+                           'winning_side'   : winning_side(text_sequence)}]
 
     # Re-order according to need
     if randomisation == 'random':

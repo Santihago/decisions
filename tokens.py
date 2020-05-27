@@ -32,10 +32,19 @@ normal_speed = 120//5  #normal moving speed
 fast_speed = 60//20
 frames_per_token = normal_speed
 
+num_tokens = 25 #set the number of *desired* tokens inside the main circle
+nr_per_type = 1
+nr_random = 0
+templates = {
+    'e' : [(.6,1),  (), (.7,1), (), (.8,1), (), (), (), (), (.8,1), (), (), (.9,1), (), ()],
+    'a' : [(),  (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (0,.66), (.5,1), (.65,1), (.5,1), (.75,1), (), ()],
+    'm' : [(),  (0,.3),  (0,.4), (0,.5), (), (), (), (), (), (.5,1), (), (), (), (.75,1), (), ()] 
+    }
+
 # 1.2 Experiment information
 
 exp_name = 'Decisions'   # Experiment name
-exp_v    = 0.5           # Version
+exp_v    = 0.8           # Version
 
 #------------------------------
 # Experiment session GUI dialog
@@ -83,10 +92,18 @@ def write_trial(correct, resp, acc, rt, velocity, path, times):
     with open(filename, 'a') as save_file: #'a' = append; 'w' = writing; 'b' = in binary mode
         file_writer = csv.writer(save_file, delimiter=',') #generate file_writer object # delimiter='\t'
         if os.stat(filename).st_size == 0: #if file is empty, insert header
-            file_writer.writerow(('exp_name', 'version', 'hz', 'num_tokens', 'normal_speed', 'fast_speed', 'id', 'gender', 'trial', 'correct', 'resp', 'acc', 'rt', 'velocity', 'path', 'times', 'timestamp', ))
+            file_writer.writerow(('exp_name', 'version', 'hz', 'num_tokens', 
+                'normal_speed', 'fast_speed', 'id', 'gender', 
+                'trial', 'type', 'sequence', 'probs', 
+                'correct', 'resp', 'acc', 'rt', 
+                'velocity', 'path', 'times', 'timestamp'))
 
         # write trial
-        file_writer.writerow((exp_name, exp_v, exp_info['screen'], num_tokens, normal_speed, fast_speed, exp_info['id'], exp_info['gender'], trl, correct, resp, acc, rt, velocity, path, times, get_timestamp()))
+        file_writer.writerow((exp_name, exp_v, exp_info['screen'], num_tokens, 
+            normal_speed, fast_speed, exp_info['id'], exp_info['gender'], 
+            trl, exp_sequences[trl]['trial_type'], exp_sequences[trl]['token_sequence'], get_prob_vector(exp_sequences[trl]['token_sequence'], num_tokens), #TODO: probs could be slow, 
+            correct, resp, acc, rt, 
+            velocity, path, times, get_timestamp()))
 
 
 def get_timestamp(time="", format='%Y-%m-%d %H:%M:%S'): 
@@ -101,14 +118,6 @@ def get_timestamp(time="", format='%Y-%m-%d %H:%M:%S'):
 # X. TOKEN SEQUENCES
 #====================
 
-num_tokens = 25 #set the number of *desired* tokens inside the main circle
-nr_per_type = 3
-nr_random = 3
-templates = {
-    'e' : [(.6,1),  (), (.7,1), (), (.8,1), (), (), (), (), (.8,1), (), (), (.9,1), (), ()],
-    'a' : [(),  (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (0,.66), (.5,1), (.65,1), (.5,1), (.75,1), (), ()],
-    'm' : [(),  (0,.3),  (0,.4), (0,.5), (), (), (), (), (), (.5,1), (), (), (), (.75,1), (), ()] 
-    }
 exp_sequences = experiment_sequences(templates, num_tokens=num_tokens, 
     nr_per_type=nr_per_type, nr_random=nr_random, randomisation='random', 
     format_to='letter')
@@ -183,11 +192,9 @@ def clip(val, min_, max_):
 """Here I create all central token arrays with randomly jittered tokens.
 I first define all positions and then create stimuli arrays."""
 
-# Create empty arrays beforehand
+# Create empty arrays
 stgs = []
 stim = []
-
-print(exp_sequences)
 
 for trl in range(num_trials):
 
@@ -196,8 +203,6 @@ for trl in range(num_trials):
 
     # CREATE COORDINATES
     xys = create_coordinates(loc, side_tokens, circle_radius, token_size)
-
-    print(len(xys))
 
     # NOTE: Not sure what the following does...:
     #tokens.size = (token_size[0] * side_tokens,
@@ -304,10 +309,6 @@ area = visual.Rect(win, width=3, height=draw_rect_height,
                     fillColor = whitish, lineColor = whitish, 
                     pos = (draw_rect_x, draw_rect_y),
                     opacity = .75)
-# curtain = visual.Rect(win, width=(c_offset+circle_radius)*2-10, height=draw_rect_height, 
-#                     fillColor = blackish, lineColor = blackish, 
-#                     pos = (draw_rect_x, draw_rect_y),
-#                     opacity = 1)
 
 #- - - - - - - - - - -
 # Static text and other
@@ -316,11 +317,15 @@ area = visual.Rect(win, width=3, height=draw_rect_height,
 txt_size = 20  #text height in dva
 title_pos = -150  # y position for the text
 pretrl_stims = []
-pretrl_stims += [visual.Polygon(win, edges=3, radius=10, fillColor = yellowish,
+pretrl_stims += [visual.Polygon(win, edges=4, radius=10, fillColor = yellowish,
             lineColor = yellowish, pos = (0, cursor_start_y_pos))]
 pretrl_stims += [visual.TextStim(win, 
             text=u"Bring mouse to bottom shape to start", 
             height=txt_size, pos = [0, title_pos], color = whitish)]
+
+speed_warning = visual.TextStim(win, 
+            text=u"Please move the mouse smoothly without stopping", 
+            height=txt_size, pos = [0, title_pos], color = redish)
 
 
 #===============
@@ -420,9 +425,9 @@ for trl in range(num_trials):
             #5.2.3 Calculate mouse velocity
             #distance between last and previous recorded coordiantes (between two frames)
             # time in frames for the duration of the travel
-            if len(trl_path) > t_in_frames:  # start measuring after a time minimum
+            if len(trl_path) > t_in_frames and not responded:  # start measuring after a time minimum
                 velocity = sqrt((trl_path[-1][0] - trl_path[-t_in_frames][0])**2 + 
-                                  (trl_path[-1][1] - trl_path[-t_in_frames][1])**2)
+                                (trl_path[-1][1] - trl_path[-t_in_frames][1])**2)
                 velocity = round(velocity, 3)
                 if velocity > 0:
                     moving = True
@@ -432,6 +437,10 @@ for trl in range(num_trials):
                     moving = False
                     #cursor.setFillColor('red')
                     area.setFillColor(redish)
+
+                    #Warning message
+                    speed_warning.draw()
+
             else: velocity = 'NA'
 
             trl_velocity.append(velocity)  # record velocity values
@@ -501,13 +510,14 @@ for trl in range(num_trials):
             # 5.7 Ask for manual input if trial ended
             if last_token and last_frame:
                 #save trial information
+                
                 write_trial(correct=correct_side, 
                             resp=sel_side_letter, 
                             acc=1 if sel_side_letter==correct_side else 0,
                             rt=rt,
                             velocity=trl_velocity, 
                             path=trl_path, 
-                            times=trl_times)
+                            times=trl_times) # TODO: maybe not fast
 
                 #require manual input to continue
                 keypress = event.waitKeys(keyList=['space', 'escape'])
