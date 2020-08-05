@@ -24,14 +24,14 @@ TODO:
 
 # 1.1
 
-win = visual.Window(units='pix', color='#1e1e1e')
+win = visual.Window([1680, 1050], units='pix', color='#1e1e1e', fullscr=False)
 normal_speed = 120//5  #normal moving speed
 fast_speed = 60//20
 frames_per_token = normal_speed
 
 num_tokens = 25 #set the number of *desired* tokens inside the main circle
-nr_per_type = 1
-nr_random = 0
+nr_per_type = 30
+nr_random = 30
 templates = {
     'e' : [(.6,1),  (), (.7,1), (), (.8,1), (), (), (), (), (.8,1), (), (), (.9,1), (), ()],
     'a' : [(),  (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (.55,.65), (.5,.5), (0,.66), (.5,1), (.65,1), (.5,1), (.75,1), (), ()],
@@ -143,7 +143,7 @@ line_color = whitish  #color of the circle border
 line_width = 2.5  #width of the circle border
 line_edges = 256  #number of edges to create the circle
 c_offset = 200  #offset from the center in the x axis for the 2 periph circles
-c_y_pos = 200
+c_y_pos = 400
 circles = []
 for pos in -c_offset, 0, c_offset:
     circles += [visual.Circle(win, 
@@ -270,7 +270,7 @@ for trl in range(num_trials):
 #- - - - - - - - - -
 
 mouse = event.Mouse(visible=True, win=win)
-cursor_start_y_pos = -200
+cursor_start_y_pos = -400
 cursor_rad = 5
 cursor = visual.Circle(win, 
         radius=cursor_rad, lineColor=line_color, fillColor=line_color,
